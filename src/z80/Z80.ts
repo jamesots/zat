@@ -107,7 +107,7 @@ export class Z80 {
 
     // These are all specific to this implementation, not Z80 features.
     // Keep track of whether we've had a HALT instruction called.
-    private halted = false;
+    public halted = false;
     // EI and DI wait one instruction before they take effect;
     //  these flags tell us when we're in that wait state.
     private do_delayed_di = false;
