@@ -1,28 +1,34 @@
 import { Z80, Registers, Flags } from './z80/Z80'
 
 const mem = [
-    0xc3, 0x04, 0x00, 0xc9, 0x76
+    // 0xc3, 0x04, 0x00, 0xc9, 0x76
+    0x3e, 0x12, 0xd3, 0x56
 ]
 
 console.log("z80 test");
 const z80 = new Z80({
     mem_read: function(addr) {
-        return mem[addr];
+        if (addr < mem.length) {
+            return mem[addr];
+        }
+        return 0;
     },
 
     mem_write: function(addr, value) {
-
+        mem[addr] = value;
     },
 
     io_read: function(port) {
-
+        console.log(`IN ${hex8(port)}`);
+        return 0;
     },
 
     io_write: function(port, value) {
-
+        console.log(`OUT ${hex16(port)},${hex8(value)}`);
     }
 });
 
+z80.run_instruction();
 z80.run_instruction();
 const registers = z80.getRegisters();
 showRegisters(registers);

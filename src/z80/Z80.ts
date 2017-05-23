@@ -166,6 +166,34 @@ export class Z80 {
         };
     }
 
+    public setRegisters(registers: Registers): void {
+        this.a = registers.a;
+        this.flags = registers.flags;
+        this.b = registers.b;
+        this.c = registers.c;
+        this.d = registers.d;
+        this.e = registers.e;
+        this.h = registers.h;
+        this.l = registers.l;
+        this.a_prime = registers.a_prime;
+        this.flags_prime = registers.flags_prime;
+        this.b_prime = registers.b_prime;
+        this.c_prime = registers.c_prime;
+        this.d_prime = registers.d_prime;
+        this.e_prime = registers.e_prime;
+        this.h_prime = registers.h_prime;
+        this.l_prime = registers.l_prime;
+        this.ix = registers.ix;
+        this.iy = registers.iy;
+        this.i = registers.i;
+        this.r = registers.r;
+        this.sp = registers.sp;
+        this.pc = registers.pc;
+        this.imode = registers.imode;
+        this.iff1 = registers.iff1;
+        this.iff2 = registers.iff2;
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     /// @public reset
     ///
