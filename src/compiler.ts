@@ -11,12 +11,17 @@ export class Compiler {
             throw vxx[0];
         }
         let vx = vxx[1];
+        // console.log(JSON.stringify(vx, undefined, 2));
 
         let outdata = ASM.hex(vx[0]);
+        let symbols = vx[1];
 
         let prog = this.hex2bytes(outdata);
 
-        return prog;
+        return {
+            data: prog,
+            symbols: vx[1]
+        };
     }
 
     private hexLine(ln, offset) {

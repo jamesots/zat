@@ -1,5 +1,6 @@
 import { Z80, Registers, Flags } from './z80/Z80';
 import { Compiler } from './compiler';
+import * as fs from 'fs';
 
 export class Zat {
     z80: Z80;
@@ -8,6 +9,8 @@ export class Zat {
     public ioWrite: (port: number, value: number) => void;
     public memRead: (addr: number) => number;
     public memWrite: (addr: number, value: number) => boolean;
+
+    private symbols: {[addr: string]: number};
 
     constructor() {
         this.z80 = new Z80({
@@ -51,8 +54,14 @@ export class Zat {
     }
 
     public compile(code: string) {
-        let memory = new Compiler().compile(code);
-        this.load(Array.from(memory));
+        let compiled = new Compiler().compile(code);
+        this.symbols = compiled.symbols;
+        this.load(Array.from(compiled.data));
+    }
+
+    public compileFile(filename) {
+        let buffer = fs.readFileSync(filename);
+        return this.compile(buffer.toString());
     }
 
     public load(mem: number[]) {
@@ -63,25 +72,39 @@ export class Zat {
         return this.z80.getRegisters();
     }
 
-    public run(start?: number, steps?: number) {
+    /**
+     * Run until a HALT is encountered, or number of instructions executed is
+     * more than runOptions.steps, or instruction at runOptions.breakAt is
+     * reached.
+     */
+    public run(start?: number | string, runOptions?: RunOptions) {
         if (start !== undefined) {
-            let reg = this.z80.getRegisters();
-            reg.pc = start;
-            this.z80.setRegisters(reg);
-        }
-        if (steps) {
-            for (let i = 0; i < steps; i++) {
-                this.z80.run_instruction();
+            if (typeof start === 'string') {
+                this.z80.pc = this.symbols[start.toUpperCase()];
+            } else {
+                this.z80.pc = start;
             }
-            return steps;
-        } else {
-            this.z80.halted = false;
-            let count = 0;
-            while (!this.z80.halted) {
-                this.z80.run_instruction();
-                count++;
-            }
-            return count;
         }
+        let steps = 10000000;
+        if (runOptions && runOptions.steps !== undefined) {
+            steps = runOptions.steps;
+        } 
+        let breakAt = undefined;
+        if (runOptions && runOptions.breakAt !== undefined) {
+            breakAt = runOptions.breakAt
+        }
+
+        this.z80.halted = false;
+        let count = 0;
+        while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)) {
+            this.z80.run_instruction();
+            count++;
+        }
+        return count;
     }
+}
+
+export interface RunOptions {
+    steps?: number;
+    breakAt?: number;
 }

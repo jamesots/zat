@@ -69,41 +69,41 @@ export interface Registers {
 export class Z80 {
     // All right, let's initialize the registers.
     // First, the standard 8080 registers.
-    private a = 0x00;
-    private b = 0x00;
-    private c = 0x00;
-    private d = 0x00;
-    private e = 0x00;
-    private h = 0x00;
-    private l = 0x00;
+    public a = 0x00;
+    public b = 0x00;
+    public c = 0x00;
+    public d = 0x00;
+    public e = 0x00;
+    public h = 0x00;
+    public l = 0x00;
     // Now the special Z80 copies of the 8080 registers
     //  (the ones used for the SWAP instruction and such).
-    private a_prime = 0x00;
-    private b_prime = 0x00;
-    private c_prime = 0x00;
-    private d_prime = 0x00;
-    private e_prime = 0x00;
-    private h_prime = 0x00;
-    private l_prime = 0x00;
+    public a_prime = 0x00;
+    public b_prime = 0x00;
+    public c_prime = 0x00;
+    public d_prime = 0x00;
+    public e_prime = 0x00;
+    public h_prime = 0x00;
+    public l_prime = 0x00;
     // And now the Z80 index registers.
-    private ix = 0x0000;
-    private iy = 0x0000;
+    public ix = 0x0000;
+    public iy = 0x0000;
     // Then the "utility" registers: the interrupt vector,
     //  the memory refresh, the stack pointer, and the program counter.
-    private i = 0x00;
-    private r = 0x00;
-    private sp = 0xdff0;
-    private pc = 0x0000;
+    public i = 0x00;
+    public r = 0x00;
+    public sp = 0xdff0;
+    public pc = 0x0000;
     // We don't keep an F register for the flags,
     //  because most of the time we're only accessing a single flag,
     //  so we optimize for that case and use utility functions
     //  for the rarer occasions when we need to access the whole register.
-    private flags: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
-    private flags_prime: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
+    public flags: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
+    public flags_prime: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
     // And finally we have the interrupt mode and flip-flop registers.
-    private imode = 0;
-    private iff1 = 0;
-    private iff2 = 0;
+    public imode = 0;
+    public iff1 = 0;
+    public iff2 = 0;
 
     // These are all specific to this implementation, not Z80 features.
     // Keep track of whether we've had a HALT instruction called.

@@ -1,0 +1,11 @@
+start:
+    ld a,0
+    halt
+    org 20
+newstart:
+    ld a,$12
+    nop
+    nop
+    nop
+    nop
+    jp newstart
