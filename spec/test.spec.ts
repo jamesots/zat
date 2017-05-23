@@ -10,6 +10,13 @@ describe('things', function() {
             // console.log(`read ${addr}`);
             return undefined;
         }
+        zat.ioWrite = (port, value) => {
+            console.log(`OUT ${port.toString(16)}, ${value.toString(16)}`);
+        }
+        zat.ioRead = (port) => {
+            console.log(`IN ${port.toString(16)}`);
+            return 0x00;
+        }
     });
 
     it('should work', function() {
@@ -24,5 +31,17 @@ describe('things', function() {
         zat.compileFile('spec/test.z80');
         zat.run('newstart', {breakAt:'breakhere'});
         expect(zat.registers.a).toBe(0x12);
-    })
+    });
+
+    it('should do stuff', function() {
+        zat.compileFile('../z80/tinymonitor.z80');
+        zat.compile(`
+        ld hl,msg
+        call ${zat.symbols['WRITE_LINE']}
+        halt
+        msg: db 'Hello$'
+        db 0
+        `);
+        zat.run(0);
+    });
 });
