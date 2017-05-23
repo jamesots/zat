@@ -33,15 +33,15 @@ describe('things', function() {
         expect(zat.registers.a).toBe(0x12);
     });
 
-    it('should do stuff', function() {
-        zat.compileFile('../z80/tinymonitor.z80');
-        zat.compile(`
-        ld hl,msg
-        call ${zat.symbols['WRITE_LINE']}
-        halt
-        msg: db 'Hello$'
-        db 0
-        `);
-        zat.run(0);
-    });
+    // it('should do stuff', function() {
+    //     zat.compileFile('../z80/tinymonitor.z80');
+    //     zat.compile(`
+    //     ld hl,msg
+    //     call ${zat.symbols['WRITE_LINE']}
+    //     halt
+    //     msg: db 'Hello$'
+    //     db 0
+    //     `);
+    //     zat.run(0);
+    // });
 });
