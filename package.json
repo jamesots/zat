@@ -1,0 +1,16 @@
+{
+  "name": "z80test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node ./src/index.ts",
+    "tsc": "tsc"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "ts-node": "^3.0.4",
+    "typescript": "^2.3.3"
+  }
+}
