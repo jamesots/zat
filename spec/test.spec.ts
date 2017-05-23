@@ -1,5 +1,5 @@
 import { Z80 } from '../src/z80/Z80';
-import { Zat } from '../src/z80test';
+import { Zat } from '../src/zat';
 
 describe('things', function() {
     let zat: Zat;
