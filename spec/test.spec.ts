@@ -22,7 +22,7 @@ describe('things', function() {
         // halt
         // `)
         zat.compileFile('spec/test.z80');
-        zat.run('newstart', {breakAt:26});
+        zat.run('newstart', {breakAt:'breakhere'});
         expect(zat.registers.a).toBe(0x12);
     })
 });

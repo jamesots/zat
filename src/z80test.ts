@@ -91,7 +91,11 @@ export class Zat {
         } 
         let breakAt = undefined;
         if (runOptions && runOptions.breakAt !== undefined) {
-            breakAt = runOptions.breakAt
+            if (typeof runOptions.breakAt === 'string') {
+                breakAt = this.symbols[runOptions.breakAt.toUpperCase()];
+            } else {
+                breakAt = runOptions.breakAt
+            }
         }
 
         this.z80.halted = false;
@@ -106,5 +110,5 @@ export class Zat {
 
 export interface RunOptions {
     steps?: number;
-    breakAt?: number;
+    breakAt?: number | string;
 }

@@ -7,5 +7,7 @@ newstart:
     nop
     nop
     nop
+breakhere:
+    ld a,$13
     nop
     jp newstart
