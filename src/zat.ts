@@ -93,12 +93,13 @@ export class Zat {
      * compile("ret") would load "c9" at adress 0
      * compile("ret", 5) would load "0" at address 5
      */
-    public compile(code: string, start?: number) {
+    public compile(code: string, start?: number | string) {
         let compiled = new Compiler().compile(code);
         for (const symbol in compiled.symbols) {
             this.symbols[symbol] = compiled.symbols[symbol];
         }
         if (start !== undefined) {
+            start = this.getAddress(start);
             this.load(compiled.data.subarray(start), start);
         } else {
             this.load(compiled.data);
@@ -146,7 +147,7 @@ export class Zat {
      * more than runOptions.steps, or instruction at runOptions.breakAt is
      * reached.
      * 
-     * Returns the number of instructions executed.
+     * Returns the number of instructions executed and the number of T-states
      */
     public run(start?: number | string, runOptions?: RunOptions) {
         if (start !== undefined) {

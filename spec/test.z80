@@ -1,3 +1,6 @@
+ft245: equ 8
+ft245_status: equ 9
+
 start:
     ld a,0
     halt
@@ -12,3 +15,24 @@ breakhere:
     ld a,$13
     nop
     jp newstart
+
+; wait for output buffer to be not-full and write char in A to it
+write_char:
+    push af
+write_char1:
+    in a,(ft245_status)
+    bit 1,a
+    jp nz,write_char1
+    pop af
+    out (ft245),a
+    ret
+
+write_line:
+    ld a,(hl)
+    cp 0
+    ret z
+    call write_char
+    inc hl
+    jp write_line
+
+end:

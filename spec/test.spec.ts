@@ -83,15 +83,27 @@ extrastart:
     });
 
 
-    // it('should do stuff', function() {
-    //     zat.compileFile('../z80/tinymonitor.z80');
-    //     zat.compile(`
-    //     ld hl,msg
-    //     call ${zat.symbols['WRITE_LINE']}
-    //     halt
-    //     msg: db 'Hello$'
-    //     db 0
-    //     `);
-    //     zat.run(0);
-    // });
+    it('should read a line', function() {
+        zat.compileFile('spec/test.z80');
+        zat.compile(`
+        org ${zat.getAddress('end')}
+        ld hl,msg
+        call ${zat.getAddress('write_line')}
+        halt
+        msg: db 'Hello'
+        db 0
+        `, 'end');
+
+        const bytes = [];
+        zat.ioWrite = (port, value) => {
+            expect(port & 0xff).toBe(8);
+            bytes.push(value);
+        }
+        zat.ioRead = (port) => {
+            expect(port & 0xff).toBe(9);
+            return 0x00;
+        }
+        zat.run('end');
+        expect(bytes).toEqual([72, 101, 108, 108, 111]);
+    });
 });
