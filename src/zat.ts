@@ -1,10 +1,10 @@
-import { Z80, Registers, Flags } from './z80/Z80';
+import { Z80, Flags } from './z80/Z80';
 import { Compiler } from './compiler';
 import * as fs from 'fs';
 
 export class Zat {
-    public z80: Z80;
-    public memory = new Uint8Array(65536);
+    public readonly z80: Z80;
+    public readonly memory = new Uint8Array(65536);
 
     /**
      * If ioRead has been set, it will be called when an IO read occurrs.
@@ -121,20 +121,6 @@ export class Zat {
         this.memory.set(mem, start);
     }
 
-    /**
-     * Get the current values of the Z80 registers
-     */
-    get registers(): Registers {
-        return this.z80.getRegisters();
-    }
-
-    /**
-     * Set the current values of the Z80 registers
-     */
-    set registers(registers: Registers) {
-        this.z80.setRegisters(registers);
-    }
-
     public getAddress(addr: number | string) {
         if (typeof addr === 'string') {
             return this.symbols[addr.toUpperCase()];
@@ -150,15 +136,17 @@ export class Zat {
      * Returns the number of instructions executed and the number of T-states
      */
     public run(start?: number | string, runOptions?: RunOptions) {
+        runOptions = runOptions || {};
+        const startSp = this.z80.sp;
         if (start !== undefined) {
             this.z80.pc = this.getAddress(start);
         }
         let steps = 10000000;
-        if (runOptions && runOptions.steps !== undefined) {
+        if (runOptions.steps !== undefined) {
             steps = runOptions.steps;
         } 
         let breakAt = undefined;
-        if (runOptions && runOptions.breakAt !== undefined) {
+        if (runOptions.breakAt !== undefined) {
             breakAt = this.getAddress(runOptions.breakAt);
         }
 
@@ -166,48 +154,27 @@ export class Zat {
         let count = 0;
         let tStates = 0;
         while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)
-            && !(this.onStep && this.onStep(this.z80.pc))) {
+            && !(this.onStep && this.onStep(this.z80.pc))
+            && !(runOptions.call && this.z80.sp === startSp + 2)) {
             tStates +=this.z80.runInstruction();
             count++;
         }
         return [count, tStates];
     }
 
-    public showRegisters(registers: Registers) {
+    public showRegisters(z80: Z80) {
         console.log(
-    `AF: ${hex8(registers.a)}${hex8(this.flagsByte)}  AF': ${hex8(registers.aAlt)}${hex8(this.flagsAltByte)}
-    BC: ${hex8(registers.b)}${hex8(registers.c)}  BC': ${hex8(registers.bAlt)}${hex8(registers.cAlt)}
-    DE: ${hex8(registers.d)}${hex8(registers.e)}  DE': ${hex8(registers.dAlt)}${hex8(registers.eAlt)}
-    HL: ${hex8(registers.h)}${hex8(registers.l)}  HL': ${hex8(registers.hAlt)}${hex8(registers.lAlt)}
-    IX: ${hex16(registers.ix)}   IY: ${hex16(registers.iy)}
-    PC: ${hex16(registers.pc)}   SP: ${hex16(registers.sp)}
-    I: ${hex16(registers.i)}    R: ${hex16(registers.r)}
+    `AF: ${hex16(z80.af)}  AF': ${hex16(z80.af_)}
+    BC: ${hex16(z80.bc)}  BC': ${hex16(z80.bc_)}
+    DE: ${hex16(z80.de)}  DE': ${hex16(z80.de_)}
+    HL: ${hex16(z80.hl)}  HL': ${hex16(z80.hl_)}
+    IX: ${hex16(z80.ix)}   IY: ${hex16(z80.iy)}
+    PC: ${hex16(z80.pc)}   SP: ${hex16(z80.sp)}
+    I: ${hex16(z80.i)}    R: ${hex16(z80.r)}
         S Z Y H X P N C
-    F: ${registers.flags.S} ${registers.flags.Z} ${registers.flags.Y} ${registers.flags.H} ${registers.flags.X} ${registers.flags.P} ${registers.flags.N} ${registers.flags.C}
-    F': ${registers.flagsAlt.S} ${registers.flagsAlt.Z} ${registers.flagsAlt.Y} ${registers.flagsAlt.H} ${registers.flagsAlt.X} ${registers.flagsAlt.P} ${registers.flagsAlt.N} ${registers.flagsAlt.C}
+    F: ${z80.flags.S} ${z80.flags.Z} ${z80.flags.Y} ${z80.flags.H} ${z80.flags.X} ${z80.flags.P} ${z80.flags.N} ${z80.flags.C}
+    F': ${z80.flags_.S} ${z80.flags_.Z} ${z80.flags_.Y} ${z80.flags_.H} ${z80.flags_.X} ${z80.flags_.P} ${z80.flags_.N} ${z80.flags_.C}
     `);
-    }
-
-    public get flagsByte(): number {
-        return this.z80.flags.S << 7
-            | this.z80.flags.Z << 6
-            | this.z80.flags.Y << 5
-            | this.z80.flags.H << 4
-            | this.z80.flags.X << 3
-            | this.z80.flags.P << 2
-            | this.z80.flags.N << 1
-            | this.z80.flags.C << 0
-    }
-
-    public get flagsAltByte(): number {
-        return this.z80.flagsAlt.S << 7
-            | this.z80.flagsAlt.Z << 6
-            | this.z80.flagsAlt.Y << 5
-            | this.z80.flagsAlt.H << 4
-            | this.z80.flagsAlt.X << 3
-            | this.z80.flagsAlt.P << 2
-            | this.z80.flagsAlt.N << 1
-            | this.z80.flagsAlt.C << 0
     }
 }
 
@@ -232,4 +199,5 @@ export function stringToBytes(str: string): number[] {
 export interface RunOptions {
     steps?: number;
     breakAt?: number | string;
+    call?: boolean;
 }

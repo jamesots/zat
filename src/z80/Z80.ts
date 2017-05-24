@@ -35,34 +35,6 @@ export interface Flags {
     N: number,
     C: number }
 
-export interface Registers {
-    a: number;
-    flags: Flags;
-    b: number;
-    c: number;
-    d: number;
-    e: number;
-    h: number;
-    l: number;
-    aAlt: number;
-    flagsAlt: Flags;
-    bAlt: number;
-    cAlt: number;
-    dAlt: number;
-    eAlt: number;
-    hAlt: number;
-    lAlt: number;
-    ix: number;
-    iy: number;
-    i: number;
-    r: number;
-    sp: number;
-    pc: number;
-    imode: number;
-    iff1: number;
-    iff2: number;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// We'll begin with the object constructor and the private API functions.
 ///////////////////////////////////////////////////////////////////////////////
@@ -78,13 +50,13 @@ export class Z80 {
     public l = 0x00;
     // Now the special Z80 copies of the 8080 registers
     //  (the ones used for the SWAP instruction and such).
-    public aAlt = 0x00;
-    public bAlt = 0x00;
-    public cAlt = 0x00;
-    public dAlt = 0x00;
-    public eAlt = 0x00;
-    public hAlt = 0x00;
-    public lAlt = 0x00;
+    public a_ = 0x00;
+    public b_ = 0x00;
+    public c_ = 0x00;
+    public d_ = 0x00;
+    public e_ = 0x00;
+    public h_ = 0x00;
+    public l_ = 0x00;
     // And now the Z80 index registers.
     public ix = 0x0000;
     public iy = 0x0000;
@@ -99,7 +71,7 @@ export class Z80 {
     //  so we optimize for that case and use utility functions
     //  for the rarer occasions when we need to access the whole register.
     public flags: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
-    public flagsAlt: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
+    public flags_: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
     // And finally we have the interrupt mode and flip-flop registers.
     public imode = 0;
     public iff1 = 0;
@@ -136,64 +108,6 @@ export class Z80 {
         this.initializeDdInstructions();
     }
 
-    public getRegisters(): Registers {
-        return {
-            a: this.a,
-            flags: this.flags,
-            b: this.b,
-            c: this.c,
-            d: this.d,
-            e: this.e,
-            h: this.h,
-            l: this.l,
-            aAlt: this.aAlt,
-            flagsAlt: this.flagsAlt,
-            bAlt: this.bAlt,
-            cAlt: this.cAlt,
-            dAlt: this.dAlt,
-            eAlt: this.eAlt,
-            hAlt: this.hAlt,
-            lAlt: this.lAlt,
-            ix: this.ix,
-            iy: this.iy,
-            i: this.i,
-            r: this.r,
-            sp: this.sp,
-            pc: this.pc,
-            imode: this.imode,
-            iff1: this.iff1,
-            iff2: this.iff2
-        };
-    }
-
-    public setRegisters(registers: Registers): void {
-        this.a = registers.a;
-        this.flags = registers.flags;
-        this.b = registers.b;
-        this.c = registers.c;
-        this.d = registers.d;
-        this.e = registers.e;
-        this.h = registers.h;
-        this.l = registers.l;
-        this.aAlt = registers.aAlt;
-        this.flagsAlt = registers.flagsAlt;
-        this.bAlt = registers.bAlt;
-        this.cAlt = registers.cAlt;
-        this.dAlt = registers.dAlt;
-        this.eAlt = registers.eAlt;
-        this.hAlt = registers.hAlt;
-        this.lAlt = registers.lAlt;
-        this.ix = registers.ix;
-        this.iy = registers.iy;
-        this.i = registers.i;
-        this.r = registers.r;
-        this.sp = registers.sp;
-        this.pc = registers.pc;
-        this.imode = registers.imode;
-        this.iff1 = registers.iff1;
-        this.iff2 = registers.iff2;
-    }
-
     ///////////////////////////////////////////////////////////////////////////////
     /// @public reset
     ///
@@ -207,7 +121,7 @@ export class Z80 {
         this.pc = 0x0000;
         this.a = 0x00;
         this.r = 0x00;
-        this.setFlagsRegister(0);
+        this.setFlags(0);
         // Start up with interrupts disabled.
         this.imode = 0;
         this.iff1 = 0;
@@ -434,7 +348,7 @@ export class Z80 {
         return value;
     };
 
-    private getFlagsRegister() {
+    private getFlags() {
         // We need the whole F register for some reason.
         //  probably a PUSH AF instruction,
         //  so make the F register out of our separate flags.
@@ -448,19 +362,19 @@ export class Z80 {
             (this.flags.C);
     };
 
-    private getFlagsAlt() {
+    private getFlags_() {
         // This is the same as the above for the F' register.
-        return (this.flagsAlt.S << 7) |
-            (this.flagsAlt.Z << 6) |
-            (this.flagsAlt.Y << 5) |
-            (this.flagsAlt.H << 4) |
-            (this.flagsAlt.X << 3) |
-            (this.flagsAlt.P << 2) |
-            (this.flagsAlt.N << 1) |
-            (this.flagsAlt.C);
+        return (this.flags_.S << 7) |
+            (this.flags_.Z << 6) |
+            (this.flags_.Y << 5) |
+            (this.flags_.H << 4) |
+            (this.flags_.X << 3) |
+            (this.flags_.P << 2) |
+            (this.flags_.N << 1) |
+            (this.flags_.C);
     };
 
-    private setFlagsRegister(operand) {
+    private setFlags(operand) {
         // We need to set the F register, probably for a POP AF,
         //  so break out the given value into our separate flags.
         this.flags.S = (operand & 0x80) >>> 7;
@@ -473,16 +387,16 @@ export class Z80 {
         this.flags.C = (operand & 0x01);
     };
 
-    private setFlagsAlt(operand) {
+    private setFlags_(operand) {
         // Again, this is the same as the above for F'.
-        this.flagsAlt.S = (operand & 0x80) >>> 7;
-        this.flagsAlt.Z = (operand & 0x40) >>> 6;
-        this.flagsAlt.Y = (operand & 0x20) >>> 5;
-        this.flagsAlt.H = (operand & 0x10) >>> 4;
-        this.flagsAlt.X = (operand & 0x08) >>> 3;
-        this.flagsAlt.P = (operand & 0x04) >>> 2;
-        this.flagsAlt.N = (operand & 0x02) >>> 1;
-        this.flagsAlt.C = (operand & 0x01);
+        this.flags_.S = (operand & 0x80) >>> 7;
+        this.flags_.Z = (operand & 0x40) >>> 6;
+        this.flags_.Y = (operand & 0x20) >>> 5;
+        this.flags_.H = (operand & 0x10) >>> 4;
+        this.flags_.X = (operand & 0x08) >>> 3;
+        this.flags_.P = (operand & 0x04) >>> 2;
+        this.flags_.N = (operand & 0x02) >>> 1;
+        this.flags_.C = (operand & 0x01);
     };
 
     private updateXyFlags(result) {
@@ -1147,12 +1061,12 @@ export class Z80 {
         // 0x08 : EX AF, AF'
         this.instructions[0x08] = () => {
             var temp = this.a;
-            this.a = this.aAlt;
-            this.aAlt = temp;
+            this.a = this.a_;
+            this.a_ = temp;
 
-            temp = this.getFlagsRegister();
-            this.setFlagsRegister(this.getFlagsAlt());
-            this.setFlagsAlt(temp);
+            temp = this.getFlags();
+            this.setFlags(this.getFlags_());
+            this.setFlags_(temp);
         };
         // 0x09 : ADD HL, BC
         this.instructions[0x09] = () => {
@@ -1702,23 +1616,23 @@ export class Z80 {
         // 0xd9 : EXX
         this.instructions[0xd9] = () => {
             var temp = this.b;
-            this.b = this.bAlt;
-            this.bAlt = temp;
+            this.b = this.b_;
+            this.b_ = temp;
             temp = this.c;
-            this.c = this.cAlt;
-            this.cAlt = temp;
+            this.c = this.c_;
+            this.c_ = temp;
             temp = this.d;
-            this.d = this.dAlt;
-            this.dAlt = temp;
+            this.d = this.d_;
+            this.d_ = temp;
             temp = this.e;
-            this.e = this.eAlt;
-            this.eAlt = temp;
+            this.e = this.e_;
+            this.e_ = temp;
             temp = this.h;
-            this.h = this.hAlt;
-            this.hAlt = temp;
+            this.h = this.h_;
+            this.h_ = temp;
             temp = this.l;
-            this.l = this.lAlt;
-            this.lAlt = temp;
+            this.l = this.l_;
+            this.l_ = temp;
         };
         // 0xda : JP C, nn
         this.instructions[0xda] = () => {
@@ -1872,7 +1786,7 @@ export class Z80 {
         // 0xf1 : POP AF
         this.instructions[0xf1] = () => {
             var result = this.popWord();
-            this.setFlagsRegister(result & 0xff);
+            this.setFlags(result & 0xff);
             this.a = (result & 0xff00) >>> 8;
         };
         // 0xf2 : JP P, nn
@@ -1890,7 +1804,7 @@ export class Z80 {
         };
         // 0xf5 : PUSH AF
         this.instructions[0xf5] = () => {
-            this.pushWord(this.getFlagsRegister() | (this.a << 8));
+            this.pushWord(this.getFlags() | (this.a << 8));
         };
         // 0xf6 : OR n
         this.instructions[0xf6] = () => {
@@ -2974,4 +2888,92 @@ export class Z80 {
         0, 14, 0, 23, 0, 15, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0
     ];
+
+    public get hl() {
+        return (this.h & 0xff) << 8 | (this.l & 0xff);
+    }
+
+    public set hl(value) {
+        this.h = (value & 0xff00) >> 8;
+        this.l = value & 0xff;
+    }
+
+    public get bc() {
+        return (this.b & 0xff) << 8 | (this.c & 0xff);
+    }
+
+    public set bc(value) {
+        this.b = (value & 0xff00) >> 8;
+        this.c = value & 0xff;
+    }
+
+    public get de() {
+        return (this.d & 0xff) << 8 | (this.e & 0xff);
+    }
+
+    public set de(value) {
+        this.d = (value & 0xff00) >> 8;
+        this.e = value & 0xff;
+    }
+
+    public get f() {
+        return this.getFlags();
+    }
+
+    public set f(value) {
+        this.setFlags(value);
+    }
+
+    public get af() {
+        return (this.a & 0xff) << 8 | (this.f & 0xff);
+    }
+
+    public set af(value) {
+        this.a = (value & 0xff00) >> 8;
+        this.f = value & 0xff;
+    }
+
+    public get hl_() {
+        return (this.h_ & 0xff) << 8 | (this.l_ & 0xff);
+    }
+
+    public set hl_(value) {
+        this.h_ = (value & 0xff00) >> 8;
+        this.l_ = value & 0xff;
+    }
+
+    public get bc_() {
+        return (this.b_ & 0xff) << 8 | (this.c_ & 0xff);
+    }
+
+    public set bc_(value) {
+        this.b_ = (value & 0xff00) >> 8;
+        this.c_ = value & 0xff;
+    }
+
+    public get de_() {
+        return (this.d_ & 0xff) << 8 | (this.e_ & 0xff);
+    }
+
+    public set de_(value) {
+        this.d_ = (value & 0xff00) >> 8;
+        this.e_ = value & 0xff;
+    }
+
+    public get f_() {
+        return this.getFlags_();
+    }
+
+    public set f_(value) {
+        this.setFlags_(value);
+    }
+
+    public get af_() {
+        return (this.a_ & 0xff) << 8 | (this.f_ & 0xff);
+    }
+
+    public set af_(value) {
+        this.a_ = (value & 0xff00) >> 8;
+        this.f_ = value & 0xff;
+    }
 }
