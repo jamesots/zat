@@ -221,6 +221,14 @@ export function hex16(num: number): string {
     return '0000'.substring(0, 4 - hex.length) + hex;
 }
 
+export function stringToBytes(str: string): number[] {
+    const bytes = [];
+    for (let i = 0; i < str.length; i++) {
+        bytes.push(str.charCodeAt(i));
+    }
+    return bytes;
+}
+
 export interface RunOptions {
     steps?: number;
     breakAt?: number | string;

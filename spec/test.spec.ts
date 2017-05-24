@@ -1,5 +1,5 @@
 import { Z80 } from '../src/z80/Z80';
-import { Zat } from '../src/zat';
+import { Zat, stringToBytes } from '../src/zat';
 
 describe('things', function() {
     let zat: Zat;
@@ -104,6 +104,6 @@ extrastart:
             return 0x00;
         }
         zat.run('end');
-        expect(bytes).toEqual([72, 101, 108, 108, 111]);
+        expect(bytes).toEqual(stringToBytes('Hello'));
     });
 });
