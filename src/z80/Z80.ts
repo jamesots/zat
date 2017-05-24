@@ -44,14 +44,14 @@ export interface Registers {
     e: number;
     h: number;
     l: number;
-    a_prime: number;
-    flags_prime: Flags;
-    b_prime: number;
-    c_prime: number;
-    d_prime: number;
-    e_prime: number;
-    h_prime: number;
-    l_prime: number;
+    a_alt: number;
+    flags_alt: Flags;
+    b_alt: number;
+    c_alt: number;
+    d_alt: number;
+    e_alt: number;
+    h_alt: number;
+    l_alt: number;
     ix: number;
     iy: number;
     i: number;
@@ -78,13 +78,13 @@ export class Z80 {
     public l = 0x00;
     // Now the special Z80 copies of the 8080 registers
     //  (the ones used for the SWAP instruction and such).
-    public a_prime = 0x00;
-    public b_prime = 0x00;
-    public c_prime = 0x00;
-    public d_prime = 0x00;
-    public e_prime = 0x00;
-    public h_prime = 0x00;
-    public l_prime = 0x00;
+    public a_alt = 0x00;
+    public b_alt = 0x00;
+    public c_alt = 0x00;
+    public d_alt = 0x00;
+    public e_alt = 0x00;
+    public h_alt = 0x00;
+    public l_alt = 0x00;
     // And now the Z80 index registers.
     public ix = 0x0000;
     public iy = 0x0000;
@@ -99,7 +99,7 @@ export class Z80 {
     //  so we optimize for that case and use utility functions
     //  for the rarer occasions when we need to access the whole register.
     public flags: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
-    public flags_prime: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
+    public flags_alt: Flags = { S: 0, Z: 0, Y: 0, H: 0, X: 0, P: 0, N: 0, C: 0 };
     // And finally we have the interrupt mode and flip-flop registers.
     public imode = 0;
     public iff1 = 0;
@@ -146,14 +146,14 @@ export class Z80 {
             e: this.e,
             h: this.h,
             l: this.l,
-            a_prime: this.a_prime,
-            flags_prime: this.flags_prime,
-            b_prime: this.b_prime,
-            c_prime: this.c_prime,
-            d_prime: this.d_prime,
-            e_prime: this.e_prime,
-            h_prime: this.h_prime,
-            l_prime: this.l_prime,
+            a_alt: this.a_alt,
+            flags_alt: this.flags_alt,
+            b_alt: this.b_alt,
+            c_alt: this.c_alt,
+            d_alt: this.d_alt,
+            e_alt: this.e_alt,
+            h_alt: this.h_alt,
+            l_alt: this.l_alt,
             ix: this.ix,
             iy: this.iy,
             i: this.i,
@@ -175,14 +175,14 @@ export class Z80 {
         this.e = registers.e;
         this.h = registers.h;
         this.l = registers.l;
-        this.a_prime = registers.a_prime;
-        this.flags_prime = registers.flags_prime;
-        this.b_prime = registers.b_prime;
-        this.c_prime = registers.c_prime;
-        this.d_prime = registers.d_prime;
-        this.e_prime = registers.e_prime;
-        this.h_prime = registers.h_prime;
-        this.l_prime = registers.l_prime;
+        this.a_alt = registers.a_alt;
+        this.flags_alt = registers.flags_alt;
+        this.b_alt = registers.b_alt;
+        this.c_alt = registers.c_alt;
+        this.d_alt = registers.d_alt;
+        this.e_alt = registers.e_alt;
+        this.h_alt = registers.h_alt;
+        this.l_alt = registers.l_alt;
         this.ix = registers.ix;
         this.iy = registers.iy;
         this.i = registers.i;
@@ -448,16 +448,16 @@ export class Z80 {
             (this.flags.C);
     };
 
-    private get_flags_prime() {
+    private get_flags_alt() {
         // This is the same as the above for the F' register.
-        return (this.flags_prime.S << 7) |
-            (this.flags_prime.Z << 6) |
-            (this.flags_prime.Y << 5) |
-            (this.flags_prime.H << 4) |
-            (this.flags_prime.X << 3) |
-            (this.flags_prime.P << 2) |
-            (this.flags_prime.N << 1) |
-            (this.flags_prime.C);
+        return (this.flags_alt.S << 7) |
+            (this.flags_alt.Z << 6) |
+            (this.flags_alt.Y << 5) |
+            (this.flags_alt.H << 4) |
+            (this.flags_alt.X << 3) |
+            (this.flags_alt.P << 2) |
+            (this.flags_alt.N << 1) |
+            (this.flags_alt.C);
     };
 
     private set_flags_register(operand) {
@@ -473,16 +473,16 @@ export class Z80 {
         this.flags.C = (operand & 0x01);
     };
 
-    private set_flags_prime(operand) {
+    private set_flags_alt(operand) {
         // Again, this is the same as the above for F'.
-        this.flags_prime.S = (operand & 0x80) >>> 7;
-        this.flags_prime.Z = (operand & 0x40) >>> 6;
-        this.flags_prime.Y = (operand & 0x20) >>> 5;
-        this.flags_prime.H = (operand & 0x10) >>> 4;
-        this.flags_prime.X = (operand & 0x08) >>> 3;
-        this.flags_prime.P = (operand & 0x04) >>> 2;
-        this.flags_prime.N = (operand & 0x02) >>> 1;
-        this.flags_prime.C = (operand & 0x01);
+        this.flags_alt.S = (operand & 0x80) >>> 7;
+        this.flags_alt.Z = (operand & 0x40) >>> 6;
+        this.flags_alt.Y = (operand & 0x20) >>> 5;
+        this.flags_alt.H = (operand & 0x10) >>> 4;
+        this.flags_alt.X = (operand & 0x08) >>> 3;
+        this.flags_alt.P = (operand & 0x04) >>> 2;
+        this.flags_alt.N = (operand & 0x02) >>> 1;
+        this.flags_alt.C = (operand & 0x01);
     };
 
     private update_xy_flags(result) {
@@ -1147,12 +1147,12 @@ export class Z80 {
         // 0x08 : EX AF, AF'
         this.instructions[0x08] = () => {
             var temp = this.a;
-            this.a = this.a_prime;
-            this.a_prime = temp;
+            this.a = this.a_alt;
+            this.a_alt = temp;
 
             temp = this.get_flags_register();
-            this.set_flags_register(this.get_flags_prime());
-            this.set_flags_prime(temp);
+            this.set_flags_register(this.get_flags_alt());
+            this.set_flags_alt(temp);
         };
         // 0x09 : ADD HL, BC
         this.instructions[0x09] = () => {
@@ -1702,23 +1702,23 @@ export class Z80 {
         // 0xd9 : EXX
         this.instructions[0xd9] = () => {
             var temp = this.b;
-            this.b = this.b_prime;
-            this.b_prime = temp;
+            this.b = this.b_alt;
+            this.b_alt = temp;
             temp = this.c;
-            this.c = this.c_prime;
-            this.c_prime = temp;
+            this.c = this.c_alt;
+            this.c_alt = temp;
             temp = this.d;
-            this.d = this.d_prime;
-            this.d_prime = temp;
+            this.d = this.d_alt;
+            this.d_alt = temp;
             temp = this.e;
-            this.e = this.e_prime;
-            this.e_prime = temp;
+            this.e = this.e_alt;
+            this.e_alt = temp;
             temp = this.h;
-            this.h = this.h_prime;
-            this.h_prime = temp;
+            this.h = this.h_alt;
+            this.h_alt = temp;
             temp = this.l;
-            this.l = this.l_prime;
-            this.l_prime = temp;
+            this.l = this.l_alt;
+            this.l_alt = temp;
         };
         // 0xda : JP C, nn
         this.instructions[0xda] = () => {
