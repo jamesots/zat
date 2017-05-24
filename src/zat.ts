@@ -171,6 +171,53 @@ export class Zat {
         }
         return [count, tStates];
     }
+
+    public showRegisters(registers: Registers) {
+        console.log(
+    `AF: ${hex8(registers.a)}${hex8(this.flagsByte)}  AF': ${hex8(registers.a_alt)}${hex8(this.flagsAltByte)}
+    BC: ${hex8(registers.b)}${hex8(registers.c)}  BC': ${hex8(registers.b_alt)}${hex8(registers.c_alt)}
+    DE: ${hex8(registers.d)}${hex8(registers.e)}  DE': ${hex8(registers.d_alt)}${hex8(registers.e_alt)}
+    HL: ${hex8(registers.h)}${hex8(registers.l)}  HL': ${hex8(registers.h_alt)}${hex8(registers.l_alt)}
+    IX: ${hex16(registers.ix)}   IY: ${hex16(registers.iy)}
+    PC: ${hex16(registers.pc)}   SP: ${hex16(registers.sp)}
+    I: ${hex16(registers.i)}    R: ${hex16(registers.r)}
+        S Z Y H X P N C
+    F: ${registers.flags.S} ${registers.flags.Z} ${registers.flags.Y} ${registers.flags.H} ${registers.flags.X} ${registers.flags.P} ${registers.flags.N} ${registers.flags.C}
+    F': ${registers.flags_alt.S} ${registers.flags_alt.Z} ${registers.flags_alt.Y} ${registers.flags_alt.H} ${registers.flags_alt.X} ${registers.flags_alt.P} ${registers.flags_alt.N} ${registers.flags_alt.C}
+    `);
+    }
+
+    public get flagsByte(): number {
+        return this.z80.flags.S << 7
+            | this.z80.flags.Z << 6
+            | this.z80.flags.Y << 5
+            | this.z80.flags.H << 4
+            | this.z80.flags.X << 3
+            | this.z80.flags.P << 2
+            | this.z80.flags.N << 1
+            | this.z80.flags.C << 0
+    }
+
+    public get flagsAltByte(): number {
+        return this.z80.flags_alt.S << 7
+            | this.z80.flags_alt.Z << 6
+            | this.z80.flags_alt.Y << 5
+            | this.z80.flags_alt.H << 4
+            | this.z80.flags_alt.X << 3
+            | this.z80.flags_alt.P << 2
+            | this.z80.flags_alt.N << 1
+            | this.z80.flags_alt.C << 0
+    }
+}
+
+export function hex8(num: number): string {
+    let hex = num.toString(16);
+    return hex.length == 1 ? '0' + hex : hex;
+}
+
+export function hex16(num: number): string {
+    let hex = num.toString(16);
+    return '0000'.substring(0, 4 - hex.length) + hex;
 }
 
 export interface RunOptions {
