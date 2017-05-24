@@ -28,9 +28,14 @@ describe('things', function() {
         // ld a,$12
         // halt
         // `)
+        // zat.whenIoRead(8).return('hello\r');
+        // zat.whenIoRead(9).return(0).always();
         zat.compileFile('spec/test.z80');
+        // zat.onStep = (pc) => pc === 20;
         zat.run('newstart', {breakAt:'breakhere'});
         expect(zat.registers.a).toBe(0x12);
+        expect(zat.registers.flags.Z).toBe(1);
+        // expect(zat.memoryAt('line', 10)).toBe('hello\0');
     });
 
     // it('should do stuff', function() {

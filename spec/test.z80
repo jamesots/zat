@@ -3,6 +3,7 @@ start:
     halt
     org 20
 newstart:
+    or a
     ld a,$12
     nop
     nop

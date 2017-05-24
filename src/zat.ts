@@ -31,6 +31,11 @@ export class Zat {
     public memWrite: (addr: number, value: number) => boolean;
 
     /**
+     * onStep is called before every step. Return true to stop execution.
+     */
+    public onStep: (pc: number) => boolean;
+
+    /**
      * The symbol table, which is created by the ASM80 compiler. All symbols
      * are in upper case.
      */
@@ -144,11 +149,13 @@ export class Zat {
 
         this.z80.halted = false;
         let count = 0;
-        while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)) {
-            this.z80.run_instruction();
+        let tStates = 0;
+        while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)
+            && !(this.onStep && this.onStep(this.z80.pc))) {
+            tStates +=this.z80.run_instruction();
             count++;
         }
-        return count;
+        return [count, tStates];
     }
 }
 
