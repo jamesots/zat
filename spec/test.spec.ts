@@ -70,6 +70,19 @@ breakhere:
         // expect(zat.memoryAt('line', 10)).toBe('hello\0');
     });
 
+    it('should work with a compiled file and compiled string', function() {
+        zat.compileFile('spec/test.z80');
+        zat.compile(`
+    org 40
+extrastart:
+    jp ${zat.getAddress('newstart')}
+        `, 40);
+        zat.run('extrastart', {breakAt:'breakhere'});
+        expect(zat.registers.a).toBe(0x12);
+        expect(zat.registers.flags.Z).toBe(1);
+    });
+
+
     // it('should do stuff', function() {
     //     zat.compileFile('../z80/tinymonitor.z80');
     //     zat.compile(`

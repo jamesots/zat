@@ -39,7 +39,7 @@ export class Zat {
      * The symbol table, which is created by the ASM80 compiler. All symbols
      * are in upper case.
      */
-    public symbols: {[addr: string]: number};
+    public symbols: {[addr: string]: number} = {};
 
     constructor() {
         this.z80 = new Z80({
@@ -84,11 +84,25 @@ export class Zat {
 
     /**
      * Compile some Z80 code, using the ASM80 compiler.
+     * 
+     * start is the address of the first byte that should be loaded into
+     * memory — you still need to use an 'org' directive in your source code.
+     * 
+     * E.g. compile("org 5\n ret") would load "0 0 0 0 0 c9" at address 0,
+     * compile("org 5\n ret",5) would load "c9" at address 5,
+     * compile("ret") would load "c9" at adress 0
+     * compile("ret", 5) would load "0" at address 5
      */
-    public compile(code: string) {
+    public compile(code: string, start?: number) {
         let compiled = new Compiler().compile(code);
-        this.symbols = compiled.symbols;
-        this.load(compiled.data);
+        for (const symbol in compiled.symbols) {
+            this.symbols[symbol] = compiled.symbols[symbol];
+        }
+        if (start !== undefined) {
+            this.load(compiled.data.subarray(start), start);
+        } else {
+            this.load(compiled.data);
+        }
     }
 
     /**
@@ -102,7 +116,7 @@ export class Zat {
     /**
      * Load some values into memory
      */
-    public load(mem: number[] | Buffer, start = 0) {
+    public load(mem: number[] | Uint8Array, start = 0) {
         this.memory.set(mem, start);
     }
 
