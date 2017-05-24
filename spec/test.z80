@@ -1,5 +1,6 @@
 ft245: equ 8
 ft245_status: equ 9
+bell: equ 6
 
 start:
     ld a,0
@@ -35,4 +36,68 @@ write_line:
     inc hl
     jp write_line
 
+read_line:
+    ld b,0ffh
+    ld hl,line
+read_line_char:
+    call read_char
+    cp 13 ; return
+    jp nz,check_bs
+    call write_char
+    ld (hl),0
+    inc hl
+    ret
+check_bs:
+    cp 8 ; backspace
+    jp z,got_backspace
+    push af
+    ld a,0
+    cp b
+    jp z,read_line_sound_bell
+    pop af
+    call write_char
+    dec b
+    ld (hl),a
+    inc hl
+    jp read_line_char
+got_backspace:
+    push af
+    ld a,0ffh
+    cp b
+    jp z,read_line_sound_bell
+    pop af
+    call write_char
+    inc b
+    dec hl
+    jp read_line_char
+read_line_sound_bell:
+    pop af
+    call sound_bell
+    jp read_line_char
+
+sound_bell:
+    push bc
+    ld bc,$FF10
+    ld a,$FF
+    out (bell),a
+sound_bell1:
+    djnz sound_bell1        
+    dec c
+    jp nz,sound_bell1
+    ld a,$00
+    out (bell),a
+    pop bc
+    ret
+
+; wait for a character to be available, and return it in A
+read_char:
+    ; don't really need to wait for char, but it's kind of
+    ; nice for this to be non-blocking
+    in a,(ft245_status)
+    bit 0,a
+    jp nz,read_char
+    in a,(ft245)
+    ret
+
+line: ds 256
 end:

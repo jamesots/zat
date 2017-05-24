@@ -82,8 +82,7 @@ extrastart:
         expect(zat.z80.flags.Z).toBe(1);
     });
 
-
-    it('should read a line', function() {
+    it('should write a line', function() {
         zat.compileFile('spec/test.z80');
 
         const bytes = [];
@@ -100,5 +99,39 @@ extrastart:
         zat.z80.sp = 0xFF00;
         zat.run('write_line', {call: true});
         expect(bytes).toEqual(stringToBytes('Hello'));
+    });
+
+    it('should read a character', function() {
+        zat.compileFile('spec/test.z80');
+
+        const values = [[9, 0], [8, 65]];
+        let index = 0;
+        zat.ioRead = (port) => {
+            expect(port & 0xff).toBe(values[index][0]);
+            return values[index++][1];
+        }
+        zat.z80.sp = 0xFF00;
+        zat.run('read_char', {call: true});
+        expect(zat.z80.a).toEqual(65);
+    });
+
+    it('should sound bell', function() {
+        zat.compileFile('spec/test.z80');
+
+        const values = [];
+        let count = 0;
+        zat.memRead = (addr) => {
+            if (addr == zat.getAddress('sound_bell1')) {
+                count++;
+            }
+            return undefined;
+        }
+        zat.ioWrite = (port, value) => {
+            values.push([port & 0xff, value]);
+        }
+        zat.z80.sp = 0xFF00;
+        zat.run('sound_bell', {call: true});
+        expect(values).toEqual([[6, 0xff], [6, 0]]);
+        expect(count).toEqual(0x100 * 0x10 - 1);
     });
 });

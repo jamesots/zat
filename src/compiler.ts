@@ -8,7 +8,7 @@ export class Compiler {
         const [error, vx] = ASM.compile(code, Monolith.Z80);
 
         if (error) {
-            throw error;
+            throw error.msg;
         }
         // console.log(JSON.stringify(vx, undefined, 2));
 
@@ -45,7 +45,9 @@ export class Compiler {
         let lastaddr = 0;
         for (let i = 0; i < hexlines.length; i++) {
             const lb = this.hexLine(hexlines[i], offset);
-            if (lb > lastaddr) lastaddr = lb;
+            if (lb > lastaddr) {
+                lastaddr = lb;
+            }
         }
         return lastaddr;
     }
