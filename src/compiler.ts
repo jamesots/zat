@@ -5,18 +5,17 @@ export class Compiler {
     private RAM = new Uint8Array(65536);
 
     public compile(code) {
-        let vxx = ASM.compile(code, Monolith.Z80);
+        const [error, vx] = ASM.compile(code, Monolith.Z80);
 
-        if (vxx[0]) {
-            throw vxx[0];
+        if (error) {
+            throw error;
         }
-        let vx = vxx[1];
         // console.log(JSON.stringify(vx, undefined, 2));
 
-        let outdata = ASM.hex(vx[0]);
-        let symbols = vx[1];
+        const [parseTree, symbols] = vx;
+        const outdata = ASM.hex(parseTree);
 
-        let prog = this.hex2bytes(outdata);
+        const prog = this.hex2bytes(outdata);
 
         return {
             data: prog,
@@ -25,13 +24,13 @@ export class Compiler {
     }
 
     private hexLine(ln, offset) {
-        var i;
+        let i;
         if (ln[0] !== ':') { return false; }
-        var len = parseInt(ln[1] + ln[2], 16);
-        var start = parseInt(ln[3] + ln[4] + ln[5] + ln[6], 16);
-        var typ = parseInt(ln[7] + ln[8], 16);
+        const len = parseInt(ln[1] + ln[2], 16);
+        const start = parseInt(ln[3] + ln[4] + ln[5] + ln[6], 16);
+        const typ = parseInt(ln[7] + ln[8], 16);
         offset = offset || 0;
-        var addrx;
+        let addrx;
         if (typ === 0) {
             for (i = 0; i < len; i++) {
                 this.RAM[start + i + offset] = parseInt(ln[9 + 2 * i] + ln[10 + 2 * i], 16);
@@ -42,10 +41,10 @@ export class Compiler {
     }
 
     private readHex(hex, offset) {
-        var hexlines = hex.split(/\n/);
-        var lastaddr = 0;
-        for (var i = 0; i < hexlines.length; i++) {
-            var lb = this.hexLine(hexlines[i], offset);
+        const hexlines = hex.split(/\n/);
+        let lastaddr = 0;
+        for (let i = 0; i < hexlines.length; i++) {
+            const lb = this.hexLine(hexlines[i], offset);
             if (lb > lastaddr) lastaddr = lb;
         }
         return lastaddr;
