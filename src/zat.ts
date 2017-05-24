@@ -4,7 +4,7 @@ import * as fs from 'fs';
 
 export class Zat {
     public z80: Z80;
-    public memory: number[] = [];
+    public memory = new Uint8Array(65536);
 
     /**
      * If ioRead has been set, it will be called when an IO read occurrs.
@@ -83,7 +83,7 @@ export class Zat {
     public compile(code: string) {
         let compiled = new Compiler().compile(code);
         this.symbols = compiled.symbols;
-        this.load(Array.from(compiled.data));
+        this.load(compiled.data);
     }
 
     /**
@@ -97,8 +97,8 @@ export class Zat {
     /**
      * Load some values into memory
      */
-    public load(mem: number[], start = 0) {
-        this.memory.splice(start, mem.length, ...mem);
+    public load(mem: number[] | Buffer, start = 0) {
+        this.memory.set(mem, start);
     }
 
     /**
@@ -115,6 +115,13 @@ export class Zat {
         this.z80.setRegisters(registers);
     }
 
+    public getAddress(addr: number | string) {
+        if (typeof addr === 'string') {
+            return this.symbols[addr.toUpperCase()];
+        }
+        return addr;
+    }
+
     /**
      * Run until a HALT is encountered, or number of instructions executed is
      * more than runOptions.steps, or instruction at runOptions.breakAt is
@@ -124,11 +131,7 @@ export class Zat {
      */
     public run(start?: number | string, runOptions?: RunOptions) {
         if (start !== undefined) {
-            if (typeof start === 'string') {
-                this.z80.pc = this.symbols[start.toUpperCase()];
-            } else {
-                this.z80.pc = start;
-            }
+            this.z80.pc = this.getAddress(start);
         }
         let steps = 10000000;
         if (runOptions && runOptions.steps !== undefined) {
@@ -136,11 +139,7 @@ export class Zat {
         } 
         let breakAt = undefined;
         if (runOptions && runOptions.breakAt !== undefined) {
-            if (typeof runOptions.breakAt === 'string') {
-                breakAt = this.symbols[runOptions.breakAt.toUpperCase()];
-            } else {
-                breakAt = runOptions.breakAt
-            }
+            breakAt = this.getAddress(runOptions.breakAt);
         }
 
         this.z80.halted = false;
