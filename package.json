@@ -17,5 +17,8 @@
     "jasmine-ts": "^0.1.2",
     "ts-node": "^3.0.4",
     "typescript": "^2.3.3"
+  },
+  "dependencies": {
+    "asm80": "^1.0.1"
   }
 }

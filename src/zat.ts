@@ -43,10 +43,10 @@ export class Zat {
 
     constructor() {
         this.z80 = new Z80({
-            mem_read: addr => this.onMemRead(addr),
-            mem_write: (addr, value) => this.onMemWrite(addr, value),
-            io_read: port => this.onIoRead(port),
-            io_write: (port, value) => this.onIoWrite(port, value)
+            memRead: addr => this.onMemRead(addr),
+            memWrite: (addr, value) => this.onMemWrite(addr, value),
+            ioRead: port => this.onIoRead(port),
+            ioWrite: (port, value) => this.onIoWrite(port, value)
         });
     }
 
@@ -167,7 +167,7 @@ export class Zat {
         let tStates = 0;
         while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)
             && !(this.onStep && this.onStep(this.z80.pc))) {
-            tStates +=this.z80.run_instruction();
+            tStates +=this.z80.runInstruction();
             count++;
         }
         return [count, tStates];
@@ -175,16 +175,16 @@ export class Zat {
 
     public showRegisters(registers: Registers) {
         console.log(
-    `AF: ${hex8(registers.a)}${hex8(this.flagsByte)}  AF': ${hex8(registers.a_alt)}${hex8(this.flagsAltByte)}
-    BC: ${hex8(registers.b)}${hex8(registers.c)}  BC': ${hex8(registers.b_alt)}${hex8(registers.c_alt)}
-    DE: ${hex8(registers.d)}${hex8(registers.e)}  DE': ${hex8(registers.d_alt)}${hex8(registers.e_alt)}
-    HL: ${hex8(registers.h)}${hex8(registers.l)}  HL': ${hex8(registers.h_alt)}${hex8(registers.l_alt)}
+    `AF: ${hex8(registers.a)}${hex8(this.flagsByte)}  AF': ${hex8(registers.aAlt)}${hex8(this.flagsAltByte)}
+    BC: ${hex8(registers.b)}${hex8(registers.c)}  BC': ${hex8(registers.bAlt)}${hex8(registers.cAlt)}
+    DE: ${hex8(registers.d)}${hex8(registers.e)}  DE': ${hex8(registers.dAlt)}${hex8(registers.eAlt)}
+    HL: ${hex8(registers.h)}${hex8(registers.l)}  HL': ${hex8(registers.hAlt)}${hex8(registers.lAlt)}
     IX: ${hex16(registers.ix)}   IY: ${hex16(registers.iy)}
     PC: ${hex16(registers.pc)}   SP: ${hex16(registers.sp)}
     I: ${hex16(registers.i)}    R: ${hex16(registers.r)}
         S Z Y H X P N C
     F: ${registers.flags.S} ${registers.flags.Z} ${registers.flags.Y} ${registers.flags.H} ${registers.flags.X} ${registers.flags.P} ${registers.flags.N} ${registers.flags.C}
-    F': ${registers.flags_alt.S} ${registers.flags_alt.Z} ${registers.flags_alt.Y} ${registers.flags_alt.H} ${registers.flags_alt.X} ${registers.flags_alt.P} ${registers.flags_alt.N} ${registers.flags_alt.C}
+    F': ${registers.flagsAlt.S} ${registers.flagsAlt.Z} ${registers.flagsAlt.Y} ${registers.flagsAlt.H} ${registers.flagsAlt.X} ${registers.flagsAlt.P} ${registers.flagsAlt.N} ${registers.flagsAlt.C}
     `);
     }
 
@@ -200,14 +200,14 @@ export class Zat {
     }
 
     public get flagsAltByte(): number {
-        return this.z80.flags_alt.S << 7
-            | this.z80.flags_alt.Z << 6
-            | this.z80.flags_alt.Y << 5
-            | this.z80.flags_alt.H << 4
-            | this.z80.flags_alt.X << 3
-            | this.z80.flags_alt.P << 2
-            | this.z80.flags_alt.N << 1
-            | this.z80.flags_alt.C << 0
+        return this.z80.flagsAlt.S << 7
+            | this.z80.flagsAlt.Z << 6
+            | this.z80.flagsAlt.Y << 5
+            | this.z80.flagsAlt.H << 4
+            | this.z80.flagsAlt.X << 3
+            | this.z80.flagsAlt.P << 2
+            | this.z80.flagsAlt.N << 1
+            | this.z80.flagsAlt.C << 0
     }
 }
 

@@ -7,44 +7,44 @@ const mem = [
 
 console.log("z80 test");
 const z80 = new Z80({
-    mem_read: function(addr) {
+    memRead: function(addr) {
         if (addr < mem.length) {
             return mem[addr];
         }
         return 0;
     },
 
-    mem_write: function(addr, value) {
+    memWrite: function(addr, value) {
         mem[addr] = value;
     },
 
-    io_read: function(port) {
+    ioRead: function(port) {
         console.log(`IN ${hex8(port)}`);
         return 0;
     },
 
-    io_write: function(port, value) {
+    ioWrite: function(port, value) {
         console.log(`OUT ${hex16(port)},${hex8(value)}`);
     }
 });
 
-z80.run_instruction();
-z80.run_instruction();
+z80.runInstruction();
+z80.runInstruction();
 const registers = z80.getRegisters();
 showRegisters(registers);
 
 function showRegisters(registers: Registers) {
     console.log(
-`AF: ${hex8(registers.a)}${hex8(flagsToNumber(registers.flags))}  AF': ${hex8(registers.a_alt)}${hex8(flagsToNumber(registers.flags_alt))}
-BC: ${hex8(registers.b)}${hex8(registers.c)}  BC': ${hex8(registers.b_alt)}${hex8(registers.c_alt)}
-DE: ${hex8(registers.d)}${hex8(registers.e)}  DE': ${hex8(registers.d_alt)}${hex8(registers.e_alt)}
-HL: ${hex8(registers.h)}${hex8(registers.l)}  HL': ${hex8(registers.h_alt)}${hex8(registers.l_alt)}
+`AF: ${hex8(registers.a)}${hex8(flagsToNumber(registers.flags))}  AF': ${hex8(registers.aAlt)}${hex8(flagsToNumber(registers.flagsAlt))}
+BC: ${hex8(registers.b)}${hex8(registers.c)}  BC': ${hex8(registers.bAlt)}${hex8(registers.cAlt)}
+DE: ${hex8(registers.d)}${hex8(registers.e)}  DE': ${hex8(registers.dAlt)}${hex8(registers.eAlt)}
+HL: ${hex8(registers.h)}${hex8(registers.l)}  HL': ${hex8(registers.hAlt)}${hex8(registers.lAlt)}
 IX: ${hex16(registers.ix)}   IY: ${hex16(registers.iy)}
 PC: ${hex16(registers.pc)}   SP: ${hex16(registers.sp)}
  I: ${hex16(registers.i)}    R: ${hex16(registers.r)}
     S Z Y H X P N C
  F: ${registers.flags.S} ${registers.flags.Z} ${registers.flags.Y} ${registers.flags.H} ${registers.flags.X} ${registers.flags.P} ${registers.flags.N} ${registers.flags.C}
-F': ${registers.flags_alt.S} ${registers.flags_alt.Z} ${registers.flags_alt.Y} ${registers.flags_alt.H} ${registers.flags_alt.X} ${registers.flags_alt.P} ${registers.flags_alt.N} ${registers.flags_alt.C}
+F': ${registers.flagsAlt.S} ${registers.flagsAlt.Z} ${registers.flagsAlt.Y} ${registers.flagsAlt.H} ${registers.flagsAlt.X} ${registers.flagsAlt.P} ${registers.flagsAlt.N} ${registers.flagsAlt.C}
 `);
 }
 
