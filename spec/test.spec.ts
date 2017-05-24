@@ -19,22 +19,54 @@ describe('things', function() {
         }
     });
 
-    it('should work', function() {
-        // zat.load([0x3e, 0x12, 0xd3, 0x56, 0x76]);
-        // zat.compile(`
-        // ld a,0
-        // halt
-        // org 20
-        // ld a,$12
-        // halt
-        // `)
-        // zat.whenIoRead(8).return('hello\r');
-        // zat.whenIoRead(9).return(0).always();
+    it('should work with a compiled file', function() {
         zat.compileFile('spec/test.z80');
-        // zat.onStep = (pc) => pc === 20;
         zat.run('newstart', {breakAt:'breakhere'});
         expect(zat.registers.a).toBe(0x12);
         expect(zat.registers.flags.Z).toBe(1);
+    });
+
+    it('should work with a compiled string', function() {
+        zat.compile(`
+start:
+    ld a,0
+    halt
+    org 20
+newstart:
+    or a
+    ld a,$12
+    nop
+    nop
+    nop
+breakhere:
+    ld a,$13
+    nop
+    jp newstart
+        `);
+        zat.run('newstart', {breakAt:'breakhere'});
+        expect(zat.registers.a).toBe(0x12);
+        expect(zat.registers.flags.Z).toBe(1);
+    });
+
+    it('should work with loading data', function() {
+        zat.load([0x3e, 0x00, 0x76, 0x00, 0x00, 0x00, 0x00, 0x00,
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                  0x00, 0x00, 0x00, 0x00, 0xb7, 0x3e, 0x12, 0x00,
+                  0x00, 0x00, 0x3e, 0x13, 0x00, 0xc3, 0x14, 0x00]);
+        zat.run(20, {breakAt:26});
+        expect(zat.registers.a).toBe(0x12);
+        expect(zat.registers.flags.Z).toBe(1);
+    });
+
+    it('should use onStep to stop', function() {
+        zat.compileFile('spec/test.z80');
+        zat.onStep = (pc) => pc === zat.getAddress('breakhere');
+        zat.run('newstart');
+        expect(zat.registers.a).toBe(0x12);
+        expect(zat.registers.flags.Z).toBe(1);
+
+        // zat.whenIoRead(8).return('hello\r');
+        // zat.whenIoRead(9).return(0).always();
         // expect(zat.memoryAt('line', 10)).toBe('hello\0');
     });
 
