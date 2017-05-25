@@ -106,7 +106,7 @@ extrastart:
     it('should read a character', function() {
         zat.compileFile('spec/test.z80');
 
-        let ioSpy = new IoSpy().returnValues([[9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65], [1, 2]]);
+        let ioSpy = new IoSpy().returnValues([[9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]]);
         zat.onIoRead = ioSpy.readSpy();
         zat.z80.sp = 0xFF00;
         zat.run('read_char', {call: true});
