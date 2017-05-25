@@ -1,28 +1,23 @@
 import { Z80 } from '../src/z80/Z80';
+import { Compiler, CompiledProg } from '../src/compiler';
 import { Zat, IoSpy, customMatchers, stringToBytes, hex16 } from '../src/zat';
 
 describe('things', function() {
     let zat: Zat;
+    let prog: CompiledProg;
+
+    beforeAll(function() {
+        prog = new Compiler().compileFile('spec/test.z80');
+    });
 
     beforeEach(function() {
         jasmine.addMatchers(customMatchers as any);
 
         zat = new Zat();
-        zat.onMemRead = (addr) => {
-            // console.log(`read ${hex16(addr)}`);
-            return undefined;
-        }
-        zat.onIoWrite = (port, value) => {
-            console.log(`OUT ${hex16(port)}, ${hex16(value)}`);
-        }
-        zat.onIoRead = (port) => {
-            console.log(`IN ${hex16(port)}`);
-            return 0x00;
-        }
     });
 
     it('should work with a compiled file', function() {
-        zat.compileFile('spec/test.z80');
+        zat.loadProg(prog);
         zat.run('newstart', {breakAt:'breakhere'});
         expect(zat.z80.a).toBe(0x12);
         expect(zat.z80.flags.Z).toBe(1);
@@ -61,7 +56,7 @@ breakhere:
     });
 
     it('should use onStep to stop', function() {
-        zat.compileFile('spec/test.z80');
+        zat.loadProg(prog);
         zat.onStep = (pc) => pc === zat.getAddress('breakhere');
         zat.run('newstart');
         expect(zat.z80.a).toBe(0x12);
@@ -73,7 +68,7 @@ breakhere:
     });
 
     it('should work with a compiled file and compiled string', function() {
-        zat.compileFile('spec/test.z80');
+        zat.loadProg(prog);
         zat.compile(`
     org 40
 extrastart:
@@ -84,8 +79,8 @@ extrastart:
         expect(zat.z80.flags.Z).toBe(1);
     });
 
-    fit('should write a line', function() {
-        zat.compileFile('spec/test.z80');
+    it('should write a line', function() {
+        zat.loadProg(prog);
 
         zat.load('Hello\0', 0x5000);
         let ioSpy = new IoSpy()
@@ -107,7 +102,7 @@ extrastart:
     });
 
     it('should read a character', function() {
-        zat.compileFile('spec/test.z80');
+        zat.loadProg(prog);
 
         let ioSpy = new IoSpy().returnValues([9, '\xff\xff\0'], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
@@ -117,7 +112,7 @@ extrastart:
     });
 
     it('should sound bell', function() {
-        zat.compileFile('spec/test.z80');
+        zat.loadProg(prog);
 
         const values = [];
         let count = 0;
@@ -163,5 +158,5 @@ start:
         zat.onIoWrite = ioSpy.writeSpy();
         zat.call('start', 0xFF00);
         expect(ioSpy).toBeComplete();
-    })
+    });
 });

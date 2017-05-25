@@ -1,10 +1,20 @@
 import * as ASM from 'asm80/asm';
 import * as Monolith from 'asm80/monolith';
+import * as fs from 'fs';
+
+export interface CompiledProg {
+    data: Buffer;
+    symbols: {[symbol: string]: number};
+}
+
+export function isCompiledProg(prog: any): prog is CompiledProg {
+    return !!((typeof prog === 'object') && (prog as CompiledProg).data && (prog as CompiledProg).symbols);
+}
 
 export class Compiler {
     private RAM = new Uint8Array(65536);
 
-    public compile(code) {
+    public compile(code): CompiledProg {
         const [error, vx] = ASM.compile(code, Monolith.Z80);
 
         if (error) {
@@ -21,6 +31,11 @@ export class Compiler {
             data: prog,
             symbols: vx[1]
         };
+    }
+
+    public compileFile(filename: string): CompiledProg {
+        let buffer = fs.readFileSync(filename);
+        return this.compile(buffer.toString());
     }
 
     private hexLine(ln, offset) {

@@ -1,5 +1,5 @@
 import { Z80, Flags } from './z80/Z80';
-import { Compiler } from './compiler';
+import { Compiler, CompiledProg, isCompiledProg } from './compiler';
 import * as fs from 'fs';
 
 export class Zat {
@@ -95,14 +95,18 @@ export class Zat {
      */
     public compile(code: string, start?: number | string) {
         let compiled = new Compiler().compile(code);
-        for (const symbol in compiled.symbols) {
-            this.symbols[symbol] = compiled.symbols[symbol];
+        this.loadProg(compiled, start);
+    }
+
+    public loadProg(prog: CompiledProg, start?: number | string) {
+        for (const symbol in prog.symbols) {
+            this.symbols[symbol] = prog.symbols[symbol];
         }
         if (start !== undefined) {
             start = this.getAddress(start);
-            this.load(compiled.data.subarray(start), start);
+            this.load(prog.data.subarray(start), start);
         } else {
-            this.load(compiled.data);
+            this.load(prog.data);
         }
     }
 
@@ -110,8 +114,8 @@ export class Zat {
      * Compile some Z80 code from a file, using the ASM80 compiler.
      */
     public compileFile(filename: string, start?: number | string) {
-        let buffer = fs.readFileSync(filename);
-        return this.compile(buffer.toString(), start);
+        let compiled = new Compiler().compileFile(filename);
+        this.loadProg(compiled, start);
     }
 
     /**
@@ -185,6 +189,25 @@ export class Zat {
             count++;
         }
         return [count, tStates];
+    }
+
+    saveMemory() {
+        const savedSymbols = {};
+        for (const symbol in this.symbols) {
+            savedSymbols[symbol] = this.symbols[symbol];
+        }
+        return {
+            memory: new Uint8Array(this.memory),
+            symbols: savedSymbols
+        }
+    }
+
+    loadMemory(savedMemory) {
+        this.memory.set(savedMemory.memory);
+        this.symbols = {};
+        for (const symbol in savedMemory.symbols) {
+            this.symbols[symbol] = savedMemory.symbols[symbol];
+        }
     }
 
     public showRegisters() {
