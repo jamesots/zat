@@ -179,7 +179,7 @@ start:
             return readSpy(port);
         }
         zat.onIoWrite = writeSpy;
-        zat.call('read_line');
+        zat.call('read_line', 0xFF00);
         expect(zat.getMemory('line', 6)).toEqual(stringToBytes('hello\0'));
     });
 
@@ -196,7 +196,53 @@ start:
 
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();
-        zat.call('read_line');
+        zat.call('read_line', 0xFF00);
         expect(zat.getMemory('line', 2)).toEqual(stringToBytes('h\0'));
-    })
+    });
+
+    it('should find first string', function() {
+        zat.loadProg(prog);
+
+        zat.load('LET\0', 'line');
+        zat.z80.hl = zat.getAddress('line');
+        zat.call('compare', 0xFF00);
+
+        expect(zat.z80.de).toBe(zat.getAddress('let'));
+    });
+
+    it('should find second string', function() {
+        zat.loadProg(prog);
+
+        zat.load('TIME\0', 'line');
+        zat.z80.hl = zat.getAddress('line');
+        zat.call('compare', 0xFF00);
+
+        expect(zat.z80.de).toBe(zat.getAddress('time'));
+    });
+
+    it('should fail to find string', function() {
+        zat.loadProg(prog);
+
+        zat.load('WIBBLE\0', 'line');
+        zat.z80.hl = zat.getAddress('line');
+        zat.call('compare', 0xFF00);
+
+        expect(zat.z80.de).toBe(zat.getAddress('error'));
+    });
+
+
+    it('should fail to find incomplete string', function() {
+        zat.loadProg(prog);
+
+        // zat.onStep = (pc) => {
+        //     console.log(`${zat.formatBriefRegisters()} ${zat.getSymbol(pc)}`);
+        //     return false;
+        // }
+        zat.load('LETTER\0', 'line');
+        zat.z80.hl = zat.getAddress('line');
+        zat.call('compare', 0xFF00);
+
+        expect(zat.z80.de).toBe(zat.getAddress('error'));
+        // zat.dumpMemory(0, 0x300);
+    });
 });

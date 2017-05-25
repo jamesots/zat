@@ -100,4 +100,67 @@ read_char:
     ret
 
 line: ds 256
+
+; pass in hl pointing to the string to compare
+compare:
+    ld de,commands
+compare_again:
+    push hl
+compare_next:
+    ld a,(de)
+    cp (hl)
+    jp nz,different
+    inc de
+    inc hl
+    jp compare_next
+different:
+    ; could be end of table, check
+    bit 7,a
+    jp z,find_next
+    xor a ; ld a,0
+    cp (hl)
+    jp nz,find_next
+load_addr:
+    ld h,d
+    ld l,e
+    ld d,(hl)
+    inc hl
+    ld e,(hl)
+    res 7,d
+    pop hl
+    ret ; return jump address in de
+find_next:
+    inc de
+    ld a,(de)
+    bit 7,a
+    jp z,find_next
+found_jump:
+    inc de
+    inc de
+    ld a,(de) ; check if next word is actually the error jump
+    bit 7,a
+    jp nz,load_addr
+    pop hl
+    jp compare_again
+
+; store an address with MSB first, with bit 7 set to 1
+.macro djump
+    db (%%1 / $100) + $80
+    db %%1 & $ff
+.endm
+
+let:
+    ret
+time:
+    ret
+error:
+    ret
+
+commands:
+    db 'LET'
+    djump let
+    db 'TIME'
+    djump time
+    djump error
+
 end:

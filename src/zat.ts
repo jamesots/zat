@@ -140,6 +140,15 @@ export class Zat {
         return addr;
     }
 
+    public getSymbol(addr: number) {
+        for (const symbol in this.symbols) {
+            if (this.symbols[symbol] === addr) {
+                return symbol;
+            }
+        }
+        return '';
+    }
+
     /**
      * Calls run, with 'call' set to true in runOptions.
      */
@@ -228,6 +237,31 @@ I: ${hex16(this.z80.i)}    R: ${hex16(this.z80.r)}
 F: ${this.z80.flags.S} ${this.z80.flags.Z} ${this.z80.flags.Y} ${this.z80.flags.H} ${this.z80.flags.X} ${this.z80.flags.P} ${this.z80.flags.N} ${this.z80.flags.C}
 F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.flags_.H} ${this.z80.flags_.X} ${this.z80.flags_.P} ${this.z80.flags_.N} ${this.z80.flags_.C}
 `);
+    }
+
+    public formatBriefRegisters() {
+        return `AF:${hex16(this.z80.af)} BC:${hex16(this.z80.bc)} DE:${hex16(this.z80.de)} HL:${hex16(this.z80.hl)} IX:${hex16(this.z80.ix)} IY:${hex16(this.z80.iy)} SP:${hex16(this.z80.sp)} PC:${hex16(this.z80.pc)}`;
+    }
+
+    public dumpMemory(start: number, length: number) {
+        let line = '';
+        let ascii = '';
+        for (let addr = start; addr < start + length; addr++) {
+            line += `${hex8(this.memory[addr])} `;
+            if (this.memory[addr] > 31 && this.memory[addr] < 127) {
+                ascii += String.fromCharCode(this.memory[addr]);
+            } else {
+                ascii += '·';
+            }
+            if ((addr + 1) % 16 === 0) {
+                line = ' '.repeat(48 - line.length) + line;
+                ascii = ' '.repeat(16 - ascii.length) + ascii;
+                line = hex16(addr - 15) + ' ' + line;
+                console.log(`${line} ${ascii}`);
+                line = '';
+                ascii = '';
+            }
+        }
     }
 }
 

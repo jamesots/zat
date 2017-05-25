@@ -18,7 +18,7 @@ export class Compiler {
         const [error, vx] = ASM.compile(code, Monolith.Z80);
 
         if (error) {
-            throw error.msg;
+            throw `${error.msg} (${error.s.numline}:${error.s.line})`;
         }
         // console.log(JSON.stringify(vx, undefined, 2));
 
