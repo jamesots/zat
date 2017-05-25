@@ -176,6 +176,33 @@ F: ${this.z80.flags.S} ${this.z80.flags.Z} ${this.z80.flags.Y} ${this.z80.flags.
 F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.flags_.H} ${this.z80.flags_.X} ${this.z80.flags_.P} ${this.z80.flags_.N} ${this.z80.flags_.C}
 `);
     }
+
+    /**
+     * Returns a function which can be passed to onIoRead, which will return
+     * values to specified ports when IO read operations occurr.
+     * 
+     * The values array contains an array of tuples. The first value in the tuple
+     * is the port on which a read is expected. The test will fail if a read occurrs
+     * on a different port. The second value in the tuple is the number to return.
+     * 
+     * If more IO reads occurr than there are values in the array, the test will fail,
+     * and 0 will be returned.
+     * 
+     * There's currently no way of testing whether all values were read.
+     * 
+     * @param values an array of tuples
+     */
+    public replyWithValues(values: number[][]): (port) => number {
+        let index = 0;
+        return (port) => {
+            if (index >= values.length) {
+                fail(`Tried to read more values than available`);
+                return 0;
+            }
+            expect(port & 0xff).toBe(values[index][0]);
+            return values[index++][1];
+        }    
+    }
 }
 
 export function hex8(num: number): string {
