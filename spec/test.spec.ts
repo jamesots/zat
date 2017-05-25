@@ -62,8 +62,6 @@ breakhere:
         expect(zat.z80.a).toBe(0x12);
         expect(zat.z80.flags.Z).toBe(1);
 
-        // zat.whenIoRead(8).return('hello\r');
-        // zat.whenIoRead(9).return(0).always();
         // expect(zat.memoryAt('line', 10)).toBe('hello\0');
     });
 
@@ -159,4 +157,25 @@ start:
         zat.call('start', 0xFF00);
         expect(ioSpy).toBeComplete();
     });
+
+    it('should read a line', function() {
+        zat.loadProg(prog);
+
+        const readSpy = new IoSpy()
+            .returnValues(8, '\x08heg\x08llo\r')
+            .readSpy();
+        const writeSpy = new IoSpy()
+            .expectValues([6, 0xff], [6, 0], [8, 'heg\x08llo\r'])
+            .writeSpy();
+        zat.onIoRead = (port) => {
+            if ((port & 0xff) === 9) {
+                return 0;
+            }
+            return readSpy(port);
+        }
+        zat.onIoWrite = writeSpy;
+        zat.call('read_line');
+        expect(Array.from(zat.memory.subarray(zat.getAddress('line'), 
+            zat.getAddress('line') + 6))).toEqual(stringToBytes('hello\0'));
+    })
 });
