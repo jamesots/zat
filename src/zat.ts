@@ -129,9 +129,22 @@ export class Zat {
     }
 
     /**
+     * Calls run, with 'call' set to true in runOptions.
+     */
+    public call(start?: number | string, runOptions?: RunOptions) {
+        runOptions = runOptions || {};
+        runOptions.call = true;
+        return this.run(start, runOptions);
+    }
+
+    /**
      * Run until a HALT is encountered, or number of instructions executed is
      * more than runOptions.steps, or instruction at runOptions.breakAt is
      * reached.
+     * 
+     * If 'call' is true, it will run until the stack pointer is 2 more than it
+     * started out at. This may happen as a result of popping something of the
+     * stack rather than a return statement.
      * 
      * Returns the number of instructions executed and the number of T-states
      */
