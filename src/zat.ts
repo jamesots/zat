@@ -109,9 +109,9 @@ export class Zat {
     /**
      * Compile some Z80 code from a file, using the ASM80 compiler.
      */
-    public compileFile(filename: string) {
+    public compileFile(filename: string, start?: number | string) {
         let buffer = fs.readFileSync(filename);
-        return this.compile(buffer.toString());
+        return this.compile(buffer.toString(), start);
     }
 
     /**
