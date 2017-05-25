@@ -6,14 +6,14 @@ describe('things', function() {
 
     beforeEach(function() {
         zat = new Zat();
-        zat.memRead = (addr) => {
+        zat.onMemRead = (addr) => {
             // console.log(`read ${hex16(addr)}`);
             return undefined;
         }
-        zat.ioWrite = (port, value) => {
+        zat.onIoWrite = (port, value) => {
             console.log(`OUT ${hex16(port)}, ${hex16(value)}`);
         }
-        zat.ioRead = (port) => {
+        zat.onIoRead = (port) => {
             console.log(`IN ${hex16(port)}`);
             return 0x00;
         }
@@ -86,11 +86,11 @@ extrastart:
         zat.compileFile('spec/test.z80');
 
         const bytes = [];
-        zat.ioWrite = (port, value) => {
+        zat.onIoWrite = (port, value) => {
             expect(port & 0xff).toBe(8);
             bytes.push(value);
         }
-        zat.ioRead = (port) => {
+        zat.onIoRead = (port) => {
             expect(port & 0xff).toBe(9);
             return 0x00;
         }
@@ -106,7 +106,7 @@ extrastart:
 
         const values = [[9, 0], [8, 65]];
         let index = 0;
-        zat.ioRead = (port) => {
+        zat.onIoRead = (port) => {
             expect(port & 0xff).toBe(values[index][0]);
             return values[index++][1];
         }
@@ -120,13 +120,13 @@ extrastart:
 
         const values = [];
         let count = 0;
-        zat.memRead = (addr) => {
+        zat.onMemRead = (addr) => {
             if (addr == zat.getAddress('sound_bell1')) {
                 count++;
             }
             return undefined;
         }
-        zat.ioWrite = (port, value) => {
+        zat.onIoWrite = (port, value) => {
             values.push([port & 0xff, value]);
         }
         zat.z80.sp = 0xFF00;

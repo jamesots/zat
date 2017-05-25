@@ -9,26 +9,26 @@ export class Zat {
     /**
      * If ioRead has been set, it will be called when an IO read occurrs.
      */
-    public ioRead: (port: number) => number;
+    public onIoRead: (port: number) => number;
 
     /**
      * If ioWrite has been set, it will be called when an IO write occurrs.
      */
-    public ioWrite: (port: number, value: number) => void;
+    public onIoWrite: (port: number, value: number) => void;
 
     /**
      * If memRead has been set, it will be called when a memory read occurrs.
      * If a number is returned, that value will be used. If undefined is returned,
      * the value from the internal memory will be used.
      */
-    public memRead: (addr: number) => number;
+    public onMemRead: (addr: number) => number;
 
     /**
      * If memWrite has been set, it will be called when a memory write occurrs.
      * If true is returned then no further action is taken. If false is returned,
      * the value will be written to the internal memory.
      */
-    public memWrite: (addr: number, value: number) => boolean;
+    public onMemWrite: (addr: number, value: number) => boolean;
 
     /**
      * onStep is called before every step. Return true to stop execution.
@@ -43,16 +43,16 @@ export class Zat {
 
     constructor() {
         this.z80 = new Z80({
-            memRead: addr => this.onMemRead(addr),
-            memWrite: (addr, value) => this.onMemWrite(addr, value),
-            ioRead: port => this.onIoRead(port),
-            ioWrite: (port, value) => this.onIoWrite(port, value)
+            memRead: addr => this.memRead(addr),
+            memWrite: (addr, value) => this.memWrite(addr, value),
+            ioRead: port => this.ioRead(port),
+            ioWrite: (port, value) => this.ioWrite(port, value)
         });
     }
 
-    private onMemRead(addr: number): number {
-        if (this.memRead) {
-            let value = this.memRead(addr);
+    private memRead(addr: number): number {
+        if (this.onMemRead) {
+            let value = this.onMemRead(addr);
             if (value !== undefined) {
                 return value;
             }
@@ -60,25 +60,25 @@ export class Zat {
         return this.memory[addr] || 0;
     }
 
-    private onMemWrite(addr: number, value: number): void {
-        if (this.memWrite) {
-            if (this.memWrite(addr, value)) {
+    private memWrite(addr: number, value: number): void {
+        if (this.onMemWrite) {
+            if (this.onMemWrite(addr, value)) {
                 return;
             }
         }
         this.memory[addr] = value;
     }
 
-    private onIoRead(port: number): number {
-        if (this.ioRead) {
-            return this.ioRead(port);
+    private ioRead(port: number): number {
+        if (this.onIoRead) {
+            return this.onIoRead(port);
         }
         return 0;
     }
 
-    private onIoWrite(port: number, value: number): void {
-        if (this.ioWrite) {
-            this.ioWrite(port, value);
+    private ioWrite(port: number, value: number): void {
+        if (this.onIoWrite) {
+            this.onIoWrite(port, value);
         }
     }
 
