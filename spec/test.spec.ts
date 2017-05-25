@@ -187,12 +187,12 @@ start:
         zat.loadProg(prog);
 
         const ioSpy = new IoSpy()
-            .returnValues([9, 0], [8, 8])
-            .expectValues([6, [0xff, 0]])
-            .returnValues([9, 0], [8, 'h'], [9, 0])
-            .expectValues([8, 'h'])
-            .returnValues([9, 0], [8, '\r'], [9, 0])
-            .expectValues([8, '\r'])
+            .returnValues([9, 0], [8, 8]) // read a backspace
+            .expectValues([6, [0xff, 0]]) // sound bell
+            .returnValues([9, 0], [8, 'h'], [9, 0]) // read 'h', check we can write
+            .expectValues([8, 'h']) // write 'h'
+            .returnValues([9, 0], [8, '\r'], [9, 0]) // read CR, check we can write
+            .expectValues([8, '\r'])  // write CR
 
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();
