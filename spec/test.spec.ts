@@ -151,13 +151,13 @@ start:
     ret
         `);
         const ioSpy = new IoSpy()
-            .expectValues([5, 1])
-            .returnValues([6, 27])
-            .expectValues([7, 27])
-            .returnValues([8, 11])
+            .expectValues(5, 1)
+            .returnValues(6, 27)
+            .expectValues(7, 27)
+            .returnValues(8, 11)
             .expectValues([1, 100], [2, 100])
             .returnValues([2, 1], [2, 2])
-            .expectValues([1, 2])
+            .expectValues(1, 2)
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();
         zat.z80.sp = 0xFF00;
