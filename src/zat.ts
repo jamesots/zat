@@ -162,19 +162,19 @@ export class Zat {
         return [count, tStates];
     }
 
-    public showRegisters(z80: Z80) {
+    public showRegisters() {
         console.log(
-    `AF: ${hex16(z80.af)}  AF': ${hex16(z80.af_)}
-    BC: ${hex16(z80.bc)}  BC': ${hex16(z80.bc_)}
-    DE: ${hex16(z80.de)}  DE': ${hex16(z80.de_)}
-    HL: ${hex16(z80.hl)}  HL': ${hex16(z80.hl_)}
-    IX: ${hex16(z80.ix)}   IY: ${hex16(z80.iy)}
-    PC: ${hex16(z80.pc)}   SP: ${hex16(z80.sp)}
-    I: ${hex16(z80.i)}    R: ${hex16(z80.r)}
-        S Z Y H X P N C
-    F: ${z80.flags.S} ${z80.flags.Z} ${z80.flags.Y} ${z80.flags.H} ${z80.flags.X} ${z80.flags.P} ${z80.flags.N} ${z80.flags.C}
-    F': ${z80.flags_.S} ${z80.flags_.Z} ${z80.flags_.Y} ${z80.flags_.H} ${z80.flags_.X} ${z80.flags_.P} ${z80.flags_.N} ${z80.flags_.C}
-    `);
+`AF: ${hex16(this.z80.af)}  AF': ${hex16(this.z80.af_)}
+BC: ${hex16(this.z80.bc)}  BC': ${hex16(this.z80.bc_)}
+DE: ${hex16(this.z80.de)}  DE': ${hex16(this.z80.de_)}
+HL: ${hex16(this.z80.hl)}  HL': ${hex16(this.z80.hl_)}
+IX: ${hex16(this.z80.ix)}   IY: ${hex16(this.z80.iy)}
+PC: ${hex16(this.z80.pc)}   SP: ${hex16(this.z80.sp)}
+I: ${hex16(this.z80.i)}    R: ${hex16(this.z80.r)}
+    S Z Y H X P N C
+F: ${this.z80.flags.S} ${this.z80.flags.Z} ${this.z80.flags.Y} ${this.z80.flags.H} ${this.z80.flags.X} ${this.z80.flags.P} ${this.z80.flags.N} ${this.z80.flags.C}
+F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.flags_.H} ${this.z80.flags_.X} ${this.z80.flags_.P} ${this.z80.flags_.N} ${this.z80.flags_.C}
+`);
     }
 }
 

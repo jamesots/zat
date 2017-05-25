@@ -21,7 +21,7 @@ The idea is that you can do something like this:
             halt
         `)
         zat.run('newstart', {breakAt:'breakhere'});
-        expect(zat.registers.a).toBe(0x12);
+        expect(zat.z80.a).toBe(0x12);
     });
 
 This compiles a block of Z80 code, and then runs it up to the breakpoint, and then checks that a register is correct. I'm using it in Jasmine; I imagine it would also work just fine in Mocha.
