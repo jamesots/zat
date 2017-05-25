@@ -234,7 +234,10 @@ export class IoSpy {
 
     public writeSpy() {
         return (port, value) => {
-
+            this.spies[this.spyIndex].onWrite(port, value);
+            if (this.spies[this.spyIndex].finished) {
+                this.spyIndex++;
+            }
         };
     }
 
@@ -250,8 +253,23 @@ export class IoSpy {
      * 
      * @param values an array of tuples
      */
-    public returnValues(values) {
+    public returnValues(...values) {
         this.spies.push(new ReturnValuesSpy(values));
+        return this;
+    }
+
+    public returnValuesIgnoringWrites(...values) {
+        this.spies.push(new ReturnValuesSpy(values, true));
+        return this;
+    }
+
+    public expectValues(...values) {
+        this.spies.push(new ExpectValuesSpy(values));
+        return this;
+    }
+
+    public expectValuesIgnoringReads(...values) {
+        this.spies.push(new ExpectValuesSpy(values, true));
         return this;
     }
 
@@ -269,13 +287,19 @@ abstract class AbstractIoSpy {
 class ReturnValuesSpy extends AbstractIoSpy {
     private index = 0;
 
-    public constructor(private values) {
+    public constructor(private values, private ignoreWrites = false) {
         super();
+        if (values.length === 0) {
+            fail('Must return at least one value');
+        }
+        if (!Array.isArray(values[0]) && values.length === 2) {
+            this.values = [values];
+        }
     }
 
     public onRead(port) {
-        expect(port & 0xff).toBe(this.values[this.index][0]);
-        const returnValue = this.values[this.index][1];
+        const [expectedPort, returnValue] = this.values[this.index];
+        expect(port & 0xff).toBe(expectedPort);
         this.index++;
         if (this.index === this.values.length) {
             this.finished = true;
@@ -284,11 +308,45 @@ class ReturnValuesSpy extends AbstractIoSpy {
     }
 
     public onWrite(port, value) {
+        if (!this.ignoreWrites) {
+            fail('Not expecting an IO write at this point');
+        }
+    }
+}
+
+class ExpectValuesSpy extends AbstractIoSpy {
+    private index = 0;
+
+    public constructor(private values, private ignoreReads = false) {
+        super();
+        if (values.length === 0) {
+            fail('Must expect at least one value');
+        }
+        if (!Array.isArray(values[0]) && values.length === 2) {
+            this.values = [values];
+        }
+    }
+
+    public onRead(port) {
+        if (!this.ignoreReads) {
+            fail('Not expecting an IO read at this point');
+        }
+        return 0;
+    }
+
+    public onWrite(port, value) {
+        const [expectedPort, expectedValue] = this.values[this.index];
+        expect(port & 0xff).toBe(expectedPort);
+        expect(value).toBe(expectedValue);
+        this.index++;
+        if (this.index === this.values.length) {
+            this.finished = true;
+        }
     }
 }
 
 export const customMatchers: jasmine.CustomMatcherFactories = {
-    toAllHaveBeenRead: function(util: jasmine.MatchersUtil, customEqualityTesters: jasmine.CustomEqualityTester[]): jasmine.CustomMatcher {
+    toBeComplete: function(util: jasmine.MatchersUtil, customEqualityTesters: jasmine.CustomEqualityTester[]): jasmine.CustomMatcher {
         return {
             compare: function(actual: IoSpy, expected): jasmine.CustomMatcherResult {
                 const result: jasmine.CustomMatcherResult = {

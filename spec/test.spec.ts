@@ -106,12 +106,12 @@ extrastart:
     it('should read a character', function() {
         zat.compileFile('spec/test.z80');
 
-        let ioSpy = new IoSpy().returnValues([[9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]]);
+        let ioSpy = new IoSpy().returnValues([9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
         zat.z80.sp = 0xFF00;
         zat.call('read_char');
         expect(zat.z80.a).toEqual(65);
-        expect(ioSpy).toAllHaveBeenRead();
+        expect(ioSpy).toBeComplete();
     });
 
     it('should sound bell', function() {
@@ -133,4 +133,35 @@ extrastart:
         expect(values).toEqual([[6, 0xff], [6, 0]]);
         expect(count).toEqual(0x100 * 0x10 - 1);
     });
+
+    it('should read and write', function() {
+        zat.compile(`
+start:
+    ld a,1
+    out (5),a
+    in a,(6)
+    out (7),a
+    in a,(8)
+    ld a,100
+    out (1),a
+    out (2),a
+    in a,(2)
+    in a,(2)
+    out (1),a
+    ret
+        `);
+        const ioSpy = new IoSpy()
+            .expectValues([5, 1])
+            .returnValues([6, 27])
+            .expectValues([7, 27])
+            .returnValues([8, 11])
+            .expectValues([1, 100], [2, 100])
+            .returnValues([2, 1], [2, 2])
+            .expectValues([1, 2])
+        zat.onIoRead = ioSpy.readSpy();
+        zat.onIoWrite = ioSpy.writeSpy();
+        zat.z80.sp = 0xFF00;
+        zat.call('start');
+        expect(ioSpy).toBeComplete();
+    })
 });
