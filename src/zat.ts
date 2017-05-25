@@ -134,10 +134,19 @@ export class Zat {
     /**
      * Calls run, with 'call' set to true in runOptions.
      */
-    public call(start?: number | string, runOptions?: RunOptions) {
-        runOptions = runOptions || {};
-        runOptions.call = true;
-        return this.run(start, runOptions);
+    public call(start?: number | string, runOptions?: RunOptions);
+    public call(start?: number | string, sp?: number | string, runOptions?: RunOptions);
+    public call(start?: number | string, spOrRunOptions?: number | string | RunOptions, runOptions?: RunOptions) {
+        if (typeof spOrRunOptions !== 'undefined' && typeof spOrRunOptions !== 'object') {
+            runOptions = runOptions || {};
+            runOptions.call = true;
+            this.z80.sp = this.getAddress(spOrRunOptions);
+            return this.run(start, runOptions);
+        } else {
+            runOptions = spOrRunOptions || {};
+            runOptions.call = true;
+            return this.run(start, runOptions);
+        }
     }
 
     /**

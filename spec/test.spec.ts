@@ -98,8 +98,7 @@ extrastart:
         }
         zat.load('Hello\0', 0x5000);
         zat.z80.hl = 0x5000;
-        zat.z80.sp = 0xFF00;
-        zat.call('write_line');
+        zat.call('write_line', 0xFF00);
         expect(bytes).toEqual(stringToBytes('Hello'));
     });
 
@@ -108,8 +107,7 @@ extrastart:
 
         let ioSpy = new IoSpy().returnValues([9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
-        zat.z80.sp = 0xFF00;
-        zat.call('read_char');
+        zat.call('read_char', 0xFF00);
         expect(zat.z80.a).toEqual(65);
         expect(ioSpy).toBeComplete();
     });
@@ -128,8 +126,7 @@ extrastart:
         zat.onIoWrite = (port, value) => {
             values.push([port & 0xff, value]);
         }
-        zat.z80.sp = 0xFF00;
-        zat.call('sound_bell');
+        zat.call('sound_bell', 0xFF00);
         expect(values).toEqual([[6, 0xff], [6, 0]]);
         expect(count).toEqual(0x100 * 0x10 - 1);
     });
@@ -160,8 +157,7 @@ start:
             .expectValues(1, 2)
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();
-        zat.z80.sp = 0xFF00;
-        zat.call('start');
+        zat.call('start', 0xFF00);
         expect(ioSpy).toBeComplete();
     })
 });
