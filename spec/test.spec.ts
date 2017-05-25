@@ -180,7 +180,6 @@ start:
         }
         zat.onIoWrite = writeSpy;
         zat.call('read_line');
-        expect(Array.from(zat.memory.subarray(zat.getAddress('line'), 
-            zat.getAddress('line') + 6))).toEqual(stringToBytes('hello\0'));
+        expect(zat.getMemory('line', 6)).toEqual(stringToBytes('hello\0'));
     })
 });

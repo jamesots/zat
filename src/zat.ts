@@ -82,6 +82,11 @@ export class Zat {
         }
     }
 
+    public getMemory(start: number | string, length: number): number[] {
+        start = this.getAddress(start);
+        return Array.from(this.memory.subarray(start, start + length));
+    }
+
     /**
      * Compile some Z80 code, using the ASM80 compiler.
      * 
