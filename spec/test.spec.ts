@@ -82,16 +82,16 @@ extrastart:
 
         zat.load('Hello\0', 0x5000);
         let ioSpy = new IoSpy()
-            .send(9, 0)
-            .receive(8, 'H')
-            .send(9, 0)
-            .receive(8, 'e')
-            .send(9, 0)
-            .receive(8, 'l')
-            .send(9, 0)
-            .receive(8, 'l')
-            .send(9, 0)
-            .receive(8, 'o');
+            .onIn(9, 0)
+            .onOut(8, 'H')
+            .onIn(9, 0)
+            .onOut(8, 'e')
+            .onIn(9, 0)
+            .onOut(8, 'l')
+            .onIn(9, 0)
+            .onOut(8, 'l')
+            .onIn(9, 0)
+            .onOut(8, 'o');
         zat.onIoWrite = ioSpy.writeSpy();
         zat.onIoRead = ioSpy.readSpy();
         zat.z80.hl = 0x5000;
@@ -102,7 +102,7 @@ extrastart:
     it('should read a character', function() {
         zat.loadProg(prog);
 
-        let ioSpy = new IoSpy().send([9, '\xff\xff\0'], [8, 65]);
+        let ioSpy = new IoSpy().onIn([9, '\xff\xff\0'], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
         zat.call('read_char', 0xFF00);
         expect(zat.z80.a).toEqual(65);
@@ -145,13 +145,13 @@ start:
     ret
         `);
         const ioSpy = new IoSpy()
-            .receive(5, 1)
-            .send(6, 27)
-            .receive(7, 27)
-            .send(8, 11)
-            .receive([1, 100], [2, 100])
-            .send([2, 1], [2, 2])
-            .receive(1, 2)
+            .onOut(5, 1)
+            .onIn(6, 27)
+            .onOut(7, 27)
+            .onIn(8, 11)
+            .onOut([1, 100], [2, 100])
+            .onIn([2, 1], [2, 2])
+            .onOut(1, 2)
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();
         zat.call('start', 0xFF00);
@@ -164,11 +164,11 @@ start:
         // Create two separate spies, so that the order of reads and writes doesn't matter.
         // It does, but I'm trying to test the bigger picture. Can do the order in another test.
         const readSpy = new IoSpy()
-            .send(8, '\x08heg\x08llo\r') // add some deletes in here
+            .onIn(8, '\x08heg\x08llo\r') // add some deletes in here
             .readSpy();
         const writeSpy = new IoSpy()
             // the first delete should ring the bell, as the buffer is empty
-            .receive([6, 0xff], [6, 0], [8, 'heg\x08llo\r'])
+            .onOut([6, 0xff], [6, 0], [8, 'heg\x08llo\r'])
             .writeSpy();
         zat.onIoRead = (port) => {
             // If it's the ftdi_status port, always return 0 (ready)
@@ -187,12 +187,12 @@ start:
         zat.loadProg(prog);
 
         const ioSpy = new IoSpy()
-            .send([9, 0], [8, 8]) // read a backspace
-            .receive([6, [0xff, 0]]) // sound bell
-            .send([9, 0], [8, 'h'], [9, 0]) // read 'h', check we can write
-            .receive([8, 'h']) // write 'h'
-            .send([9, 0], [8, '\r'], [9, 0]) // read CR, check we can write
-            .receive([8, '\r'])  // write CR
+            .onIn([9, 0], [8, 8]) // read a backspace
+            .onOut([6, [0xff, 0]]) // sound bell
+            .onIn([9, 0], [8, 'h'], [9, 0]) // read 'h', check we can write
+            .onOut([8, 'h']) // write 'h'
+            .onIn([9, 0], [8, '\r'], [9, 0]) // read CR, check we can write
+            .onOut([8, '\r'])  // write CR
 
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();

@@ -290,7 +290,7 @@ export class IoSpy {
      * 
      * @param values an array of tuples
      */
-    public send(...values) {
+    public onIn(...values) {
         this.spies.push(new ReturnValuesSpy(values));
         return this;
     }
@@ -300,7 +300,7 @@ export class IoSpy {
         return this;
     }
 
-    public receive(...values) {
+    public onOut(...values) {
         this.spies.push(new ExpectValuesSpy(values));
         return this;
     }
