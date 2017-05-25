@@ -290,27 +290,27 @@ export class IoSpy {
      * 
      * @param values an array of tuples
      */
-    public returnValues(...values) {
+    public send(...values) {
         this.spies.push(new ReturnValuesSpy(values));
         return this;
     }
 
-    public returnValuesIgnoringWrites(...values) {
+    public sendIgnoringWrites(...values) {
         this.spies.push(new ReturnValuesSpy(values, true));
         return this;
     }
 
-    public expectValues(...values) {
+    public receive(...values) {
         this.spies.push(new ExpectValuesSpy(values));
         return this;
     }
 
-    public expectValuesIgnoringReads(...values) {
+    public receiveIgnoringReads(...values) {
         this.spies.push(new ExpectValuesSpy(values, true));
         return this;
     }
 
-    public allRead() {
+    public allDone() {
         return this.spyIndex >= this.spies.length;
     }
 }
@@ -430,7 +430,7 @@ export const customMatchers: jasmine.CustomMatcherFactories = {
                     pass: true,
                     message: ''
                 };
-                if (!actual.allRead()) {
+                if (!actual.allDone()) {
                     result.pass = false;
                     result.message = 'Expected all io to have been read';
                 }
