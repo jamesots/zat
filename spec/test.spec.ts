@@ -161,16 +161,21 @@ start:
     it('should read a line', function() {
         zat.loadProg(prog);
 
+        // Create two separate spies, so that the order of reads and writes doesn't matter.
+        // It does, but I'm trying to test the bigger picture. Can do the order in another test.
         const readSpy = new IoSpy()
-            .returnValues(8, '\x08heg\x08llo\r')
+            .returnValues(8, '\x08heg\x08llo\r') // add some deletes in here
             .readSpy();
         const writeSpy = new IoSpy()
+            // the first delete should ring the bell, as the buffer is empty
             .expectValues([6, 0xff], [6, 0], [8, 'heg\x08llo\r'])
             .writeSpy();
         zat.onIoRead = (port) => {
+            // If it's the ftdi_status port, always return 0 (ready)
             if ((port & 0xff) === 9) {
                 return 0;
             }
+            // ...otherwise use the spy
             return readSpy(port);
         }
         zat.onIoWrite = writeSpy;
