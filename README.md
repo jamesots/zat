@@ -34,22 +34,36 @@ And you can compile an external file:
 
     zat.compileFile('spec/test.z80');
 
-You can write functions to handle memory and io reads and writes. I intend to improve this part
-of the system so that you can read back the io activity automatically after running a test.
+You can write functions to handle memory and io reads and writes.
 
     beforeEach(function() {
         zat = new Zat();
-        zat.memRead = (addr) => {
+        zat.onMemRead = (addr) => {
             console.log(`read ${addr.toString(16)}`);
             return undefined;
         }
-        zat.ioWrite = (port, value) => {
+        zat.onIoWrite = (port, value) => {
             console.log(`OUT ${port.toString(16)}, ${value.toString(16)}`);
         }
-        zat.ioRead = (port) => {
+        zat.onIoRead = (port) => {
             console.log(`IN ${port.toString(16)}`);
             return 0x00;
         }
+    });
+
+I am working on improving this part
+of the system so that you can read back the io activity automatically after running a test. You can
+use an IoSpy to respond to IN instructions:
+
+    it('should read a character', function() {
+        zat.compileFile('spec/test.z80');
+
+        let ioSpy = new IoSpy().returnValues([[9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]]);
+        zat.onIoRead = ioSpy.readSpy();
+        zat.z80.sp = 0xFF00;
+        zat.call('read_char');
+        expect(zat.z80.a).toEqual(65);
+        expect(ioSpy).toAllHaveBeenRead();
     });
 
 I'm using ASM80 (https://github.com/maly/asm80-node) to compile the code, and a modified version
