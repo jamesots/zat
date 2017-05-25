@@ -1,5 +1,5 @@
 import { Z80 } from '../src/z80/Z80';
-import { Zat, stringToBytes, hex16 } from '../src/zat';
+import { Zat, IoSpy, stringToBytes, hex16 } from '../src/zat';
 
 describe('things', function() {
     let zat: Zat;
@@ -104,10 +104,12 @@ extrastart:
     it('should read a character', function() {
         zat.compileFile('spec/test.z80');
 
-        zat.onIoRead = zat.replyWithValues([[9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]]);
+        let spy = new IoSpy().returnValues([[9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]]);
+        zat.onIoRead = spy.readSpy();
         zat.z80.sp = 0xFF00;
         zat.run('read_char', {call: true});
         expect(zat.z80.a).toEqual(65);
+        expect(spy.allRead()).toBe(true);
     });
 
     it('should sound bell', function() {

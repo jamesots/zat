@@ -201,7 +201,7 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
             }
             expect(port & 0xff).toBe(values[index][0]);
             return values[index++][1];
-        }    
+        };    
     }
 }
 
@@ -227,4 +227,61 @@ export interface RunOptions {
     steps?: number;
     breakAt?: number | string;
     call?: boolean;
+}
+
+export class IoSpy {
+    private spies: AbstractIoSpy[] = [];
+    private spyIndex = 0;
+
+    public readSpy() {
+        return (port: number) => {
+            const returnValue = this.spies[this.spyIndex].onRead(port);
+            if (this.spies[this.spyIndex].finished) {
+                this.spyIndex++;
+            }
+            return returnValue;
+        };
+    }
+
+    public writeSpy() {
+        return (port, value) => {
+
+        };
+    }
+
+    public returnValues(values) {
+        this.spies.push(new ReturnValuesSpy(values));
+        return this;
+    }
+
+    public allRead() {
+        return this.spyIndex >= this.spies.length;
+    }
+}
+
+abstract class AbstractIoSpy {
+    public finished = false;
+    public abstract onRead(port: number): number;
+    public abstract onWrite(port: number, value: number): void;
+}
+
+class ReturnValuesSpy extends AbstractIoSpy {
+    private index = 0;
+
+    public constructor(private values) {
+        super();
+    }
+
+    public onRead(port) {
+        expect(port & 0xff).toBe(this.values[this.index][0]);
+        const returnValue = this.values[this.index][1];
+        this.index++;
+        if (this.index === this.values.length) {
+            this.finished = true;
+        }
+        return returnValue;
+    }
+
+    public onWrite(port, value) {
+    }
 }
