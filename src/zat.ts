@@ -324,6 +324,7 @@ abstract class AbstractIoSpy {
 class ReturnValuesSpy extends AbstractIoSpy {
     private index = 0;
     private subIndex = 0;
+    private subValues = [];
 
     public constructor(private values, private ignoreWrites = false) {
         super();
@@ -338,8 +339,13 @@ class ReturnValuesSpy extends AbstractIoSpy {
     public onRead(port) {
         const [expectedPort, returnValue] = this.values[this.index];
         expect(port & 0xff).toBe(expectedPort);
-        if (typeof returnValue === 'string') {
-            const num = returnValue.charCodeAt(this.subIndex);
+        if (typeof returnValue === 'string' && this.subIndex === 0) {
+            this.subValues = stringToBytes(returnValue);
+        } else if (Array.isArray(returnValue) && this.subIndex === 0) {
+            this.subValues = returnValue;
+        }
+        if (typeof returnValue === 'string' || Array.isArray(returnValue)) {
+            const num = this.subValues[this.subIndex];
             this.subIndex++;
             if (this.subIndex === returnValue.length) {
                 this.subIndex = 0;
@@ -368,6 +374,7 @@ class ReturnValuesSpy extends AbstractIoSpy {
 class ExpectValuesSpy extends AbstractIoSpy {
     private index = 0;
     private subIndex = 0;
+    private subValues = [];
 
     public constructor(private values, private ignoreReads = false) {
         super();
@@ -389,8 +396,13 @@ class ExpectValuesSpy extends AbstractIoSpy {
     public onWrite(port, value) {
         const [expectedPort, expectedValue] = this.values[this.index];
         expect(port & 0xff).toBe(expectedPort);
-        if (typeof expectedValue === 'string') {
-            const num = expectedValue.charCodeAt(this.subIndex);
+        if (typeof expectedValue === 'string' && this.subIndex === 0) {
+            this.subValues = stringToBytes(expectedValue);
+        } else if (Array.isArray(expectedValue) && this.subIndex === 0) {
+            this.subValues = expectedValue;
+        }
+        if (typeof expectedValue === 'string' || Array.isArray(expectedValue)) {
+            const num = this.subValues[this.subIndex];
             expect(value).toBe(num);
             this.subIndex++;
             if (this.subIndex === expectedValue.length) {

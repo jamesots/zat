@@ -181,5 +181,22 @@ start:
         zat.onIoWrite = writeSpy;
         zat.call('read_line');
         expect(zat.getMemory('line', 6)).toEqual(stringToBytes('hello\0'));
+    });
+
+    it('should read a line - details', function() {
+        zat.loadProg(prog);
+
+        const ioSpy = new IoSpy()
+            .returnValues([9, 0], [8, 8])
+            .expectValues([6, [0xff, 0]])
+            .returnValues([9, 0], [8, 'h'], [9, 0])
+            .expectValues([8, 'h'])
+            .returnValues([9, 0], [8, '\r'], [9, 0])
+            .expectValues([8, '\r'])
+
+        zat.onIoRead = ioSpy.readSpy();
+        zat.onIoWrite = ioSpy.writeSpy();
+        zat.call('read_line');
+        expect(zat.getMemory('line', 2)).toEqual(stringToBytes('h\0'));
     })
 });
