@@ -96,7 +96,7 @@ extrastart:
             expect(port & 0xff).toBe(9);
             return 0x00;
         }
-        zat.load(stringToBytes('Hello\0'), 0x5000);
+        zat.load('Hello\0', 0x5000);
         zat.z80.hl = 0x5000;
         zat.z80.sp = 0xFF00;
         zat.call('write_line');

@@ -117,7 +117,10 @@ export class Zat {
     /**
      * Load some values into memory
      */
-    public load(mem: number[] | Uint8Array, start = 0) {
+    public load(mem: number[] | Uint8Array | string, start = 0) {
+        if (typeof mem === 'string') {
+            mem = stringToBytes(mem);
+        }
         this.memory.set(mem, start);
     }
 
