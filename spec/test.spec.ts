@@ -104,7 +104,7 @@ extrastart:
     it('should read a character', function() {
         zat.compileFile('spec/test.z80');
 
-        zat.onIoRead = zat.replyWithValues([[9, 0], [8, 65]]);
+        zat.onIoRead = zat.replyWithValues([[9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]]);
         zat.z80.sp = 0xFF00;
         zat.run('read_char', {call: true});
         expect(zat.z80.a).toEqual(65);
