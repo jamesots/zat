@@ -84,28 +84,32 @@ extrastart:
         expect(zat.z80.flags.Z).toBe(1);
     });
 
-    it('should write a line', function() {
+    fit('should write a line', function() {
         zat.compileFile('spec/test.z80');
 
-        const bytes = [];
-        zat.onIoWrite = (port, value) => {
-            expect(port & 0xff).toBe(8);
-            bytes.push(value);
-        }
-        zat.onIoRead = (port) => {
-            expect(port & 0xff).toBe(9);
-            return 0x00;
-        }
         zat.load('Hello\0', 0x5000);
+        let ioSpy = new IoSpy()
+            .returnValues(9, 0)
+            .expectValues(8, 'H')
+            .returnValues(9, 0)
+            .expectValues(8, 'e')
+            .returnValues(9, 0)
+            .expectValues(8, 'l')
+            .returnValues(9, 0)
+            .expectValues(8, 'l')
+            .returnValues(9, 0)
+            .expectValues(8, 'o');
+        zat.onIoWrite = ioSpy.writeSpy();
+        zat.onIoRead = ioSpy.readSpy();
         zat.z80.hl = 0x5000;
         zat.call('write_line', 0xFF00);
-        expect(bytes).toEqual(stringToBytes('Hello'));
+        expect(ioSpy).toBeComplete();
     });
 
     it('should read a character', function() {
         zat.compileFile('spec/test.z80');
 
-        let ioSpy = new IoSpy().returnValues([9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]);
+        let ioSpy = new IoSpy().returnValues([9, '\xff\xff\0'], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
         zat.call('read_char', 0xFF00);
         expect(zat.z80.a).toEqual(65);

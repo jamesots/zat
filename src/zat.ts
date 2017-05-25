@@ -295,6 +295,7 @@ abstract class AbstractIoSpy {
 
 class ReturnValuesSpy extends AbstractIoSpy {
     private index = 0;
+    private subIndex = 0;
 
     public constructor(private values, private ignoreWrites = false) {
         super();
@@ -309,11 +310,24 @@ class ReturnValuesSpy extends AbstractIoSpy {
     public onRead(port) {
         const [expectedPort, returnValue] = this.values[this.index];
         expect(port & 0xff).toBe(expectedPort);
-        this.index++;
-        if (this.index === this.values.length) {
-            this.finished = true;
+        if (typeof returnValue === 'string') {
+            const num = returnValue.charCodeAt(this.subIndex);
+            this.subIndex++;
+            if (this.subIndex === returnValue.length) {
+                this.subIndex = 0;
+                this.index++;
+                if (this.index === this.values.length) {
+                    this.finished = true;
+                }
+            }
+            return num;
+        } else {
+            this.index++;
+            if (this.index === this.values.length) {
+                this.finished = true;
+            }
+            return returnValue;
         }
-        return returnValue;
     }
 
     public onWrite(port, value) {
@@ -325,6 +339,7 @@ class ReturnValuesSpy extends AbstractIoSpy {
 
 class ExpectValuesSpy extends AbstractIoSpy {
     private index = 0;
+    private subIndex = 0;
 
     public constructor(private values, private ignoreReads = false) {
         super();
@@ -346,10 +361,23 @@ class ExpectValuesSpy extends AbstractIoSpy {
     public onWrite(port, value) {
         const [expectedPort, expectedValue] = this.values[this.index];
         expect(port & 0xff).toBe(expectedPort);
-        expect(value).toBe(expectedValue);
-        this.index++;
-        if (this.index === this.values.length) {
-            this.finished = true;
+        if (typeof expectedValue === 'string') {
+            const num = expectedValue.charCodeAt(this.subIndex);
+            expect(value).toBe(num);
+            this.subIndex++;
+            if (this.subIndex === expectedValue.length) {
+                this.subIndex = 0;
+                this.index++;
+                if (this.index === this.values.length) {
+                    this.finished = true;
+                }
+            }
+        } else {
+            expect(value).toBe(expectedValue);
+            this.index++;
+            if (this.index === this.values.length) {
+                this.finished = true;
+            }
         }
     }
 }
