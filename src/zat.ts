@@ -46,6 +46,11 @@ export class Zat {
      */
     public symbols: {[addr: string]: number} = {};
 
+    /**
+     * When using call(), set the stack pointer to this value before starting, if set
+     */
+    public defaultCallSp: number | string;
+
     constructor() {
         this.z80 = new Z80({
             memRead: addr => this.memRead(addr),
@@ -157,19 +162,14 @@ export class Zat {
     /**
      * Calls run, with 'call' set to true in runOptions.
      */
-    public call(start?: number | string, runOptions?: RunOptions);
-    public call(start?: number | string, sp?: number | string, runOptions?: RunOptions);
-    public call(start?: number | string, spOrRunOptions?: number | string | RunOptions, runOptions?: RunOptions) {
-        if (typeof spOrRunOptions !== 'undefined' && typeof spOrRunOptions !== 'object') {
-            runOptions = runOptions || {};
-            runOptions.call = true;
-            this.z80.sp = this.getAddress(spOrRunOptions);
-            return this.run(start, runOptions);
-        } else {
-            runOptions = spOrRunOptions || {};
-            runOptions.call = true;
-            return this.run(start, runOptions);
+    public call(start?: number | string, runOptions?: RunOptions) {
+        runOptions = runOptions || {};
+        runOptions.call = true;
+        const sp = runOptions.sp || this.defaultCallSp;
+        if (typeof sp !== 'undefined') {
+            this.z80.sp = this.getAddress(sp);
         }
+        return this.run(start, runOptions);
     }
 
     /**
@@ -185,7 +185,10 @@ export class Zat {
      */
     public run(start?: number | string, runOptions?: RunOptions) {
         runOptions = runOptions || {};
-        const startSp = this.z80.sp;
+        let startSp = this.z80.sp + 2;
+        if (startSp >= 65536) {
+            startSp = startSp - 65536;
+        }
         if (start !== undefined) {
             this.z80.pc = this.getAddress(start);
         }
@@ -203,7 +206,7 @@ export class Zat {
         let tStates = 0;
         while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)
             && !(this.onStep && this.onStep(this.z80.pc))
-            && !(runOptions.call && this.z80.sp === startSp + 2 && this.z80.lastInstruction === InstructionType.RET)) {
+            && !(runOptions.call && this.z80.sp === startSp && this.z80.lastInstruction === InstructionType.RET)) {
             tStates +=this.z80.runInstruction();
             count++;
         }
@@ -292,4 +295,5 @@ export interface RunOptions {
     steps?: number;
     breakAt?: number | string;
     call?: boolean;
+    sp?: number | string;
 }
