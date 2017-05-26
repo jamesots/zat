@@ -4,6 +4,8 @@ Z80 Automated Testing
 This is the beginnings of a project to enable Test Driven Development
 for Z80 programmes.
 
+**WARNING:** This is a work in progress, and the API is likely to change.
+
 The idea is that you can do something like this:
 
     it('should work', function() {
