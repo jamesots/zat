@@ -1,6 +1,6 @@
 import { Z80 } from '../src/z80/Z80';
 import { Compiler, CompiledProg } from '../src/compiler';
-import { Zat, IoSpy, customMatchers, stringToBytes, hex16 } from '../src/zat';
+import { Zat, IoSpy, StepSpy, customMatchers, stringToBytes, hex16 } from '../src/zat';
 
 describe('things', function() {
     let zat: Zat;
@@ -245,4 +245,41 @@ start:
         expect(zat.z80.de).toBe(zat.getAddress('error'));
         // zat.dumpMemory(0, 0x300);
     });
+
+    it('should mock a call', function() {
+        zat.compile(`
+start:
+    ld a,5
+    call subroutine
+    add a,1
+    halt
+subroutine:
+    ret
+        `);
+
+        zat.run('start');
+        expect(zat.z80.a).toBe(6);
+
+        zat.onStep = new StepSpy(zat).setFakeCall(zat.getAddress('subroutine'), () => {
+            zat.z80.a += 10;
+        }).stepSpy();
+        zat.run('start');
+        expect(zat.z80.a).toBe(16);
+    })
+
+    it('should not intercept a call if there is no call statement', function() {
+        zat.compile(`
+start:
+    ld a,5
+subroutine:
+    add a,1
+    ret
+        `);
+
+        zat.onStep = new StepSpy(zat).setFakeCall(zat.getAddress('subroutine'), () => {
+            zat.z80.a += 10;
+        }).stepSpy();
+        zat.call('start', 0xFF00);
+        expect(zat.z80.a).toBe(6);
+    })
 });

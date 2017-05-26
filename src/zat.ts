@@ -1,4 +1,4 @@
-import { Z80, Flags } from './z80/Z80';
+import { Z80, Flags, InstructionType } from './z80/Z80';
 import { Compiler, CompiledProg, isCompiledProg } from './compiler';
 import * as fs from 'fs';
 
@@ -198,7 +198,7 @@ export class Zat {
         let tStates = 0;
         while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)
             && !(this.onStep && this.onStep(this.z80.pc))
-            && !(runOptions.call && this.z80.sp === startSp + 2)) {
+            && !(runOptions.call && this.z80.sp === startSp + 2 && this.z80.lastInstruction === InstructionType.RET)) {
             tStates +=this.z80.runInstruction();
             count++;
         }
@@ -287,6 +287,82 @@ export interface RunOptions {
     steps?: number;
     breakAt?: number | string;
     call?: boolean;
+}
+
+export class StepSpy {
+    private spies: AbstractStepSpy[] = [];
+
+    constructor(private zat: Zat) {}
+
+    stepSpy() {
+        return (pc: number) => {
+            for (const spy of this.spies) {
+                if (spy.onStep(this.zat, pc)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    public setBreakpoint(pc: number) {
+        this.spies.push(new BreakpointStepSpy(pc));
+        return this;
+    }
+
+    public setFakeCall(pc: number, func: () => void) {
+        this.spies.push(new FakeCallStepSpy(pc, func));
+        return this;
+    }
+
+    public setOnStep(pc: number, func: () => boolean) {
+        this.spies.push(new OnStepSpy(pc, func));
+        return this;
+    }
+}
+
+abstract class AbstractStepSpy {
+    public abstract onStep(zat: Zat, pc: number): boolean;
+}
+
+class BreakpointStepSpy extends AbstractStepSpy {
+    public constructor(private breakpoint) {
+        super();
+    }
+
+    public onStep(zat: Zat, pc: number): boolean {
+        return pc === this.breakpoint;
+    }
+}
+
+class FakeCallStepSpy extends AbstractStepSpy {
+    public constructor(private addr, private func: () => void) {
+        super();
+    }
+
+    public onStep(zat: Zat, pc: number): boolean {
+        if (pc === this.addr && (
+            zat.z80.lastInstruction === InstructionType.CALL
+            || zat.z80.lastInstruction === InstructionType.INT
+            || zat.z80.lastInstruction === InstructionType.RST)) {
+            this.func();
+            zat.z80.pc = zat.z80.popWord();
+        }
+        return false;
+    }
+}
+
+class OnStepSpy extends AbstractStepSpy {
+    public constructor(private addr, private func: () => boolean) {
+        super();
+    }
+
+    public onStep(zat: Zat, pc: number): boolean {
+        if (pc === this.addr) {
+            return this.func();
+        }
+        return false;
+    }
 }
 
 export class IoSpy {

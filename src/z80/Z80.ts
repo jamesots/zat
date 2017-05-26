@@ -25,6 +25,14 @@
 /// https://github.com/DrGoldfire/Z80.js
 "use strict";
 
+export enum InstructionType {
+    CALL,
+    RET,
+    RST,
+    INT,
+    OTHER
+}
+
 export interface Flags { 
     S: number,
     Z: number,
@@ -88,6 +96,8 @@ export class Z80 {
     //  including processing any prefixes and handling interrupts.
     private cycleCounter = 0;
 
+    public lastInstruction: InstructionType;
+
     constructor(private core: any) {
         // The argument to this constructor should be an object containing 4 functions:
         // memRead(address) should return the byte at the given memory address,
@@ -144,6 +154,7 @@ export class Z80 {
     ///          while this instruction was executing
     ///////////////////////////////////////////////////////////////////////////////
     public runInstruction() {
+        this.lastInstruction = InstructionType.OTHER;
         if (!this.halted) {
             // If the previous instruction was a DI or an EI,
             //  we'll need to disable or enable interrupts
@@ -214,6 +225,7 @@ export class Z80 {
             this.pushWord(this.pc);
             this.pc = 0x66;
             this.cycleCounter += 11;
+            this.lastInstruction = InstructionType.INT;
         }
         else if (this.iff1) {
             // The high bit of R is not affected by this increment,
@@ -234,6 +246,7 @@ export class Z80 {
                 // Mode 1 is always just RST 0x38.
                 this.pushWord(this.pc);
                 this.pc = 0x38;
+                this.lastInstruction = InstructionType.INT;
                 this.cycleCounter += 13;
             }
             else if (this.imode === 2) {
@@ -247,6 +260,7 @@ export class Z80 {
                 this.pc = this.core.read_mem_byte(vectorAddress) |
                     (this.core.read_mem_byte((vectorAddress + 1) & 0xffff) << 8);
 
+                this.lastInstruction = InstructionType.INT;
                 this.cycleCounter += 19;
             }
         }
@@ -434,7 +448,7 @@ export class Z80 {
         return parityBits[value];
     };
 
-    private pushWord(operand) {
+    public pushWord(operand) {
         // Pretty obvious what this function does; given a 16-bit value,
         //  decrement the stack pointer, write the high byte to the new
         //  stack pointer location, then repeat for the low byte.
@@ -444,7 +458,7 @@ export class Z80 {
         this.core.memWrite(this.sp, operand & 0x00ff);
     };
 
-    private popWord() {
+    public popWord() {
         // Again, not complicated; read a byte off the top of the stack,
         //  increment the stack pointer, rinse and repeat.
         var retval = this.core.memRead(this.sp) & 0xff;
@@ -503,6 +517,7 @@ export class Z80 {
             this.pc = this.core.memRead((this.pc + 1) & 0xffff) |
                 (this.core.memRead((this.pc + 2) & 0xffff) << 8);
             this.pc = (this.pc - 1) & 0xffff;
+            this.lastInstruction = InstructionType.CALL;
         }
         else {
             this.pc = (this.pc + 2) & 0xffff;
@@ -513,13 +528,15 @@ export class Z80 {
         if (condition) {
             this.cycleCounter += 6;
             this.pc = (this.popWord() - 1) & 0xffff;
+            this.lastInstruction = InstructionType.RET;
         }
     };
 
-    private doReset(address) {
+    private doRestart(address) {
         // The RST [address] instructions go through here.
         this.pushWord((this.pc + 1) & 0xffff);
         this.pc = (address - 1) & 0xffff;
+        this.lastInstruction = InstructionType.RST;
     };
 
     private doAdd(operand) {
@@ -1426,7 +1443,7 @@ export class Z80 {
         };
         // 0xc7 : RST 00h
         this.instructions[0xc7] = () => {
-            this.doReset(0x00);
+            this.doRestart(0x00);
         };
         // 0xc8 : RET Z
         this.instructions[0xc8] = () => {
@@ -1435,6 +1452,7 @@ export class Z80 {
         // 0xc9 : RET
         this.instructions[0xc9] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0xca : JP Z, nn
         this.instructions[0xca] = () => {
@@ -1563,6 +1581,7 @@ export class Z80 {
             this.pc = this.core.memRead((this.pc + 1) & 0xffff) |
                 (this.core.memRead((this.pc + 2) & 0xffff) << 8);
             this.pc = (this.pc - 1) & 0xffff;
+            this.lastInstruction = InstructionType.CALL;
         };
         // 0xce : ADC A, n
         this.instructions[0xce] = () => {
@@ -1571,7 +1590,7 @@ export class Z80 {
         };
         // 0xcf : RST 08h
         this.instructions[0xcf] = () => {
-            this.doReset(0x08);
+            this.doRestart(0x08);
         };
         // 0xd0 : RET NC
         this.instructions[0xd0] = () => {
@@ -1607,7 +1626,7 @@ export class Z80 {
         };
         // 0xd7 : RST 10h
         this.instructions[0xd7] = () => {
-            this.doReset(0x10);
+            this.doRestart(0x10);
         };
         // 0xd8 : RET C
         this.instructions[0xd8] = () => {
@@ -1681,7 +1700,7 @@ export class Z80 {
         };
         // 0xdf : RST 18h
         this.instructions[0xdf] = () => {
-            this.doReset(0x18);
+            this.doRestart(0x18);
         };
         // 0xe0 : RET PO
         this.instructions[0xe0] = () => {
@@ -1721,7 +1740,7 @@ export class Z80 {
         };
         // 0xe7 : RST 20h
         this.instructions[0xe7] = () => {
-            this.doReset(0x20);
+            this.doRestart(0x20);
         };
         // 0xe8 : RET PE
         this.instructions[0xe8] = () => {
@@ -1777,7 +1796,7 @@ export class Z80 {
         };
         // 0xef : RST 28h
         this.instructions[0xef] = () => {
-            this.doReset(0x28);
+            this.doRestart(0x28);
         };
         // 0xf0 : RET P
         this.instructions[0xf0] = () => {
@@ -1813,7 +1832,7 @@ export class Z80 {
         };
         // 0xf7 : RST 30h
         this.instructions[0xf7] = () => {
-            this.doReset(0x30);
+            this.doRestart(0x30);
         };
         // 0xf8 : RET M
         this.instructions[0xf8] = () => {
@@ -1878,7 +1897,7 @@ export class Z80 {
         };
         // 0xff : RST 38h
         this.instructions[0xff] = () => {
-            this.doReset(0x38);
+            this.doRestart(0x38);
         };
     }
 
@@ -1921,6 +1940,7 @@ export class Z80 {
         this.edInstructions[0x45] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
             this.iff1 = this.iff2;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0x46 : IM 0
         this.edInstructions[0x46] = () => {
@@ -1959,6 +1979,7 @@ export class Z80 {
         // 0x4d : RETI
         this.edInstructions[0x4d] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0x4e : IM 0 (Undocumented)
         this.edInstructions[0x4e] = () => {
@@ -1998,6 +2019,7 @@ export class Z80 {
         this.edInstructions[0x55] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
             this.iff1 = this.iff2;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0x56 : IM 1
         this.edInstructions[0x56] = () => {
@@ -2038,6 +2060,7 @@ export class Z80 {
         this.edInstructions[0x5d] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
             this.iff1 = this.iff2;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0x5e : IM 2
         this.edInstructions[0x5e] = () => {
@@ -2078,6 +2101,7 @@ export class Z80 {
         this.edInstructions[0x65] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
             this.iff1 = this.iff2;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0x66 : IM 0
         this.edInstructions[0x66] = () => {
@@ -2128,6 +2152,7 @@ export class Z80 {
         this.edInstructions[0x6d] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
             this.iff1 = this.iff2;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0x6e : IM 0 (Undocumented)
         this.edInstructions[0x6e] = () => {
@@ -2178,6 +2203,7 @@ export class Z80 {
         this.edInstructions[0x75] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
             this.iff1 = this.iff2;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0x76 : IM 1
         this.edInstructions[0x76] = () => {
@@ -2213,6 +2239,7 @@ export class Z80 {
         this.edInstructions[0x7d] = () => {
             this.pc = (this.popWord() - 1) & 0xffff;
             this.iff1 = this.iff2;
+            this.lastInstruction = InstructionType.RET;
         };
         // 0x7e : IM 2
         this.edInstructions[0x7e] = () => {
