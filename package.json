@@ -4,6 +4,7 @@
   "description": "",
   "main": "lib/zat.js",
   "scripts": {
+    "build": "tsc",
     "tsc": "tsc",
     "test": "jasmine-ts 'spec/**/*.spec.ts'"
   },
