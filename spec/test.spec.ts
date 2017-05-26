@@ -1,6 +1,5 @@
-import { Z80 } from '../src/z80/Z80';
-import { Compiler, CompiledProg } from '../src/compiler';
-import { Zat, IoSpy, StepMock, customMatchers, stringToBytes, hex16 } from '../src/zat';
+import { Zat, IoSpy, StepMock, customMatchers, stringToBytes, hex16, Compiler, CompiledProg, Z80 } from '../src/zat';
+import '../src/matchers';
 
 describe('things', function() {
     let zat: Zat;

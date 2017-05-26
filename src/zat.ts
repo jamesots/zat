@@ -4,6 +4,7 @@ import { Compiler, CompiledProg } from './compiler';
 export { Compiler, CompiledProg } from './compiler';
 export { IoSpy } from './io_spies';
 export { StepMock } from './step_mocks';
+export { customMatchers } from './custom_matchers';
 import * as fs from 'fs';
 
 export class Zat {

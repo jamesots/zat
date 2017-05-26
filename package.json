@@ -10,7 +10,6 @@
     "test": "jasmine-ts 'spec/**/*.spec.ts'"
   },
   "author": "James Ots <code@jamesots.com>",
-  "types": "lib/zat.d.ts",
   "license": "MIT",
   "devDependencies": {
     "@types/jasmine": "^2.5.47",
