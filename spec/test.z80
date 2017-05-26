@@ -117,6 +117,9 @@ different:
     ; could be end of table, check
     bit 7,a
     jp z,find_next
+    ld a,' '
+    cp (hl)
+    jp z,load_addr
     xor a ; ld a,0
     cp (hl)
     jp nz,find_next

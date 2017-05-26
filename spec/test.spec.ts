@@ -220,6 +220,16 @@ start:
         expect(zat.z80.de).toBe(zat.getAddress('time'));
     });
 
+    it('should find second string, terminated by space', function() {
+        zat.loadProg(prog);
+
+        zat.load('TIME ', 'line');
+        zat.z80.hl = zat.getAddress('line');
+        zat.call('compare', 0xFF00);
+
+        expect(zat.z80.de).toBe(zat.getAddress('time'));
+    });
+
     it('should fail to find string', function() {
         zat.loadProg(prog);
 
@@ -230,6 +240,25 @@ start:
         expect(zat.z80.de).toBe(zat.getAddress('error'));
     });
 
+    it('should fail to find short string', function() {
+        zat.loadProg(prog);
+
+        zat.load('LE ', 'line');
+        zat.z80.hl = zat.getAddress('line');
+        zat.call('compare', 0xFF00);
+
+        expect(zat.z80.de).toBe(zat.getAddress('error'));
+    });
+
+    it('should fail to find no string', function() {
+        zat.loadProg(prog);
+
+        zat.load(' ', 'line');
+        zat.z80.hl = zat.getAddress('line');
+        zat.call('compare', 0xFF00);
+
+        expect(zat.z80.de).toBe(zat.getAddress('error'));
+    });
 
     it('should fail to find incomplete string', function() {
         zat.loadProg(prog);
