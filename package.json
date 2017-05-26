@@ -1,13 +1,14 @@
 {
-  "name": "z80test",
-  "version": "1.0.0",
+  "name": "zat",
+  "version": "0.1.0",
   "description": "",
-  "main": "zat.js",
+  "main": "lib/zat.js",
   "scripts": {
     "tsc": "tsc",
     "test": "jasmine-ts 'spec/**/*.spec.ts'"
   },
-  "author": "",
+  "author": "James Ots <code@jamesots.com>",
+  "types": "lib/zat.d.ts",
   "license": "MIT",
   "devDependencies": {
     "@types/jasmine": "^2.5.47",

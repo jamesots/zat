@@ -63,10 +63,58 @@ use an IoSpy to respond to IN instructions:
         zat.z80.sp = 0xFF00;
         zat.call('read_char');
         expect(zat.z80.a).toEqual(65);
-        expect(ioSpy).toAllHaveBeenRead();
+        expect(ioSpy).toBeComplete();
     });
 
 I'm using ASM80 (https://github.com/maly/asm80-node) to compile the code, and a modified version
 of Z80.js (https://github.com/DrGoldfire/Z80.js) to run the code.
 
 This is licensed under the MIT licence.
+
+Use
+===
+
+To use this in a project, you need to install these npm packages as dev-dependencies:
+ 
+ * zat
+ * typescript
+ * jasmine
+ * jasmine-ts
+ * @types/jasmine
+
+Example:
+
+```
+mkdir my-project
+cd my-project
+npm init
+npm i -D zat typescript jasmine jasmine-ts @types/jasmine
+./node_modules/.bin/jasmine init
+```
+Then add this into your package.json:
+```
+"scripts": {
+    "test": "jasmine-ts 'spec/**/*.spec.ts'"
+}
+```
+Now you can create a test spec in the spec directory. Something like this:
+```
+import { Zat, IoSpy, StepMock, customMatchers, stringToBytes, hex16, Compiler, CompiledProg, Z80 } from 'zat';
+
+describe('things', function() {
+    let zat: Zat;
+    let prog: CompiledProg;
+
+    beforeEach(function() {
+        jasmine.addMatchers(customMatchers as any);
+
+        zat = new Zat();
+    });
+
+    it('should do something', function() {
+        zat.compileFile('test.z80');
+        zat.run(0);
+        expect(zat.z80.a).toBe(5);
+    })
+});
+```
