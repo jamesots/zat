@@ -7,10 +7,6 @@ export interface CompiledProg {
     symbols: {[symbol: string]: number};
 }
 
-export function isCompiledProg(prog: any): prog is CompiledProg {
-    return !!((typeof prog === 'object') && (prog as CompiledProg).data && (prog as CompiledProg).symbols);
-}
-
 export class Compiler {
     private RAM = new Uint8Array(65536);
 

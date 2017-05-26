@@ -1,7 +1,7 @@
 import { Z80, Flags, InstructionType } from './z80/Z80';
 export { Z80, Flags, InstructionType } from './z80/Z80';
-import { Compiler, CompiledProg, isCompiledProg } from './compiler';
-export { Compiler, CompiledProg, isCompiledProg } from './compiler';
+import { Compiler, CompiledProg } from './compiler';
+export { Compiler, CompiledProg } from './compiler';
 import * as fs from 'fs';
 
 export class Zat {
