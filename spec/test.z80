@@ -104,25 +104,25 @@ line: ds 256
 ; pass in hl pointing to the string to compare
 compare:
     ld de,commands
-compare_again:
+compare_next_word:
     push hl
-compare_next:
+compare_next_letter:
     ld a,(de)
     cp (hl)
     jp nz,different
     inc de
     inc hl
-    jp compare_next
+    jp compare_next_letter
 different:
     ; could be end of table, check
     bit 7,a
-    jp z,find_next
+    jp z,find_next_word
     ld a,' '
     cp (hl)
     jp z,load_addr
     xor a ; ld a,0
     cp (hl)
-    jp nz,find_next
+    jp nz,find_next_word
 load_addr:
     ld h,d
     ld l,e
@@ -132,11 +132,11 @@ load_addr:
     res 7,d
     pop hl
     ret ; return jump address in de
-find_next:
+find_next_word:
     inc de
     ld a,(de)
     bit 7,a
-    jp z,find_next
+    jp z,find_next_word
 found_jump:
     inc de
     inc de
@@ -144,7 +144,7 @@ found_jump:
     bit 7,a
     jp nz,load_addr
     pop hl
-    jp compare_again
+    jp compare_next_word
 
 ; store an address with MSB first, with bit 7 set to 1
 .macro djump
