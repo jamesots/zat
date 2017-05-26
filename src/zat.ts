@@ -289,15 +289,15 @@ export interface RunOptions {
     call?: boolean;
 }
 
-export class StepSpy {
-    private spies: AbstractStepSpy[] = [];
+export class StepMock {
+    private mocks: AbstractStepMock[] = [];
 
     constructor(private zat: Zat) {}
 
-    stepSpy() {
+    mock() {
         return (pc: number) => {
-            for (const spy of this.spies) {
-                if (spy.onStep(this.zat, pc)) {
+            for (const mock of this.mocks) {
+                if (mock.onStep(this.zat, pc)) {
                     return true;
                 }
             }
@@ -305,27 +305,30 @@ export class StepSpy {
         }
     }
 
-    public setBreakpoint(pc: number) {
-        this.spies.push(new BreakpointStepSpy(pc));
+    public setBreakpoint(pc: number | string) {
+        pc = this.zat.getAddress(pc);
+        this.mocks.push(new BreakpointStepMock(pc));
         return this;
     }
 
-    public setFakeCall(pc: number, func: () => void) {
-        this.spies.push(new FakeCallStepSpy(pc, func));
+    public setFakeCall(pc: number | string, func: () => void) {
+        pc = this.zat.getAddress(pc);
+        this.mocks.push(new FakeCallStepMock(pc, func));
         return this;
     }
 
-    public setOnStep(pc: number, func: () => boolean) {
-        this.spies.push(new OnStepSpy(pc, func));
+    public setOnStep(pc: number | string, func: () => boolean) {
+        pc = this.zat.getAddress(pc);
+        this.mocks.push(new OnStepMock(pc, func));
         return this;
     }
 }
 
-abstract class AbstractStepSpy {
+abstract class AbstractStepMock {
     public abstract onStep(zat: Zat, pc: number): boolean;
 }
 
-class BreakpointStepSpy extends AbstractStepSpy {
+class BreakpointStepMock extends AbstractStepMock {
     public constructor(private breakpoint) {
         super();
     }
@@ -335,7 +338,7 @@ class BreakpointStepSpy extends AbstractStepSpy {
     }
 }
 
-class FakeCallStepSpy extends AbstractStepSpy {
+class FakeCallStepMock extends AbstractStepMock {
     public constructor(private addr, private func: () => void) {
         super();
     }
@@ -352,7 +355,7 @@ class FakeCallStepSpy extends AbstractStepSpy {
     }
 }
 
-class OnStepSpy extends AbstractStepSpy {
+class OnStepMock extends AbstractStepMock {
     public constructor(private addr, private func: () => boolean) {
         super();
     }
@@ -369,9 +372,11 @@ export class IoSpy {
     private spies: AbstractIoSpy[] = [];
     private spyIndex = 0;
 
+    constructor(private zat: Zat) {}
+
     public readSpy() {
         return (port: number) => {
-            const returnValue = this.spies[this.spyIndex].onRead(port);
+            const returnValue = this.spies[this.spyIndex].onRead(this.zat, port);
             if (this.spies[this.spyIndex].finished) {
                 this.spyIndex++;
             }
@@ -381,7 +386,7 @@ export class IoSpy {
 
     public writeSpy() {
         return (port, value) => {
-            this.spies[this.spyIndex].onWrite(port, value);
+            this.spies[this.spyIndex].onWrite(this.zat, port, value);
             if (this.spies[this.spyIndex].finished) {
                 this.spyIndex++;
             }
@@ -427,8 +432,8 @@ export class IoSpy {
 
 abstract class AbstractIoSpy {
     public finished = false;
-    public abstract onRead(port: number): number;
-    public abstract onWrite(port: number, value: number): void;
+    public abstract onRead(zat: Zat, port: number): number;
+    public abstract onWrite(zat: Zat, port: number, value: number): void;
 }
 
 class ReturnValuesSpy extends AbstractIoSpy {
@@ -446,8 +451,9 @@ class ReturnValuesSpy extends AbstractIoSpy {
         }
     }
 
-    public onRead(port) {
-        const [expectedPort, returnValue] = this.values[this.index];
+    public onRead(zat: Zat, port) {
+        let [expectedPort, returnValue] = this.values[this.index];
+        expectedPort = zat.getAddress(expectedPort);
         expect(port & 0xff).toBe(expectedPort);
         if (typeof returnValue === 'string' && this.subIndex === 0) {
             this.subValues = stringToBytes(returnValue);
@@ -474,7 +480,7 @@ class ReturnValuesSpy extends AbstractIoSpy {
         }
     }
 
-    public onWrite(port, value) {
+    public onWrite(zat: Zat, port, value) {
         if (!this.ignoreWrites) {
             fail('Not expecting an IO write at this point');
         }
@@ -496,15 +502,16 @@ class ExpectValuesSpy extends AbstractIoSpy {
         }
     }
 
-    public onRead(port) {
+    public onRead(zat: Zat, port) {
         if (!this.ignoreReads) {
             fail('Not expecting an IO read at this point');
         }
         return 0;
     }
 
-    public onWrite(port, value) {
-        const [expectedPort, expectedValue] = this.values[this.index];
+    public onWrite(zat: Zat, port, value) {
+        let [expectedPort, expectedValue] = this.values[this.index];
+        expectedPort = zat.getAddress(expectedPort);
         expect(port & 0xff).toBe(expectedPort);
         if (typeof expectedValue === 'string' && this.subIndex === 0) {
             this.subValues = stringToBytes(expectedValue);

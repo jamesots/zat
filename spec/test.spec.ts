@@ -1,6 +1,6 @@
 import { Z80 } from '../src/z80/Z80';
 import { Compiler, CompiledProg } from '../src/compiler';
-import { Zat, IoSpy, StepSpy, customMatchers, stringToBytes, hex16 } from '../src/zat';
+import { Zat, IoSpy, StepMock, customMatchers, stringToBytes, hex16 } from '../src/zat';
 
 describe('things', function() {
     let zat: Zat;
@@ -81,7 +81,7 @@ extrastart:
         zat.loadProg(prog);
 
         zat.load('Hello\0', 0x5000);
-        let ioSpy = new IoSpy()
+        let ioSpy = new IoSpy(zat)
             .onIn(9, 0)
             .onOut(8, 'H')
             .onIn(9, 0)
@@ -102,7 +102,7 @@ extrastart:
     it('should read a character', function() {
         zat.loadProg(prog);
 
-        let ioSpy = new IoSpy().onIn([9, '\xff\xff\0'], [8, 65]);
+        let ioSpy = new IoSpy(zat).onIn([9, '\xff\xff\0'], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
         zat.call('read_char', 0xFF00);
         expect(zat.z80.a).toEqual(65);
@@ -144,7 +144,7 @@ start:
     out (1),a
     ret
         `);
-        const ioSpy = new IoSpy()
+        const ioSpy = new IoSpy(zat)
             .onOut(5, 1)
             .onIn(6, 27)
             .onOut(7, 27)
@@ -163,16 +163,16 @@ start:
 
         // Create two separate spies, so that the order of reads and writes doesn't matter.
         // It does, but I'm trying to test the bigger picture. Can do the order in another test.
-        const readSpy = new IoSpy()
-            .onIn(8, '\x08heg\x08llo\r') // add some deletes in here
+        const readSpy = new IoSpy(zat)
+            .onIn('ft245', '\x08heg\x08llo\r') // add some deletes in here
             .readSpy();
-        const writeSpy = new IoSpy()
+        const writeSpy = new IoSpy(zat)
             // the first delete should ring the bell, as the buffer is empty
-            .onOut([6, 0xff], [6, 0], [8, 'heg\x08llo\r'])
+            .onOut(['bell', [0xff, 0]], ['ft245', 'heg\x08llo\r'])
             .writeSpy();
         zat.onIoRead = (port) => {
             // If it's the ftdi_status port, always return 0 (ready)
-            if ((port & 0xff) === 9) {
+            if ((port & 0xff) === zat.getAddress('ft245_status')) {
                 return 0;
             }
             // ...otherwise use the spy
@@ -186,13 +186,13 @@ start:
     it('should read a line - details', function() {
         zat.loadProg(prog);
 
-        const ioSpy = new IoSpy()
-            .onIn([9, 0], [8, 8]) // read a backspace
-            .onOut([6, [0xff, 0]]) // sound bell
-            .onIn([9, 0], [8, 'h'], [9, 0]) // read 'h', check we can write
-            .onOut([8, 'h']) // write 'h'
-            .onIn([9, 0], [8, '\r'], [9, 0]) // read CR, check we can write
-            .onOut([8, '\r'])  // write CR
+        const ioSpy = new IoSpy(zat)
+            .onIn(['ft245_status', 0], ['ft245', 8]) // read a backspace
+            .onOut(['bell', [0xff, 0]]) // sound bell
+            .onIn(['ft245_status', 0], ['ft245', 'h'], ['ft245_status', 0]) // read 'h', check we can write
+            .onOut(['ft245', 'h']) // write 'h'
+            .onIn(['ft245_status', 0], ['ft245', '\r'], ['ft245_status', 0]) // read CR, check we can write
+            .onOut(['ft245', '\r'])  // write CR
 
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();
@@ -260,9 +260,9 @@ subroutine:
         zat.run('start');
         expect(zat.z80.a).toBe(6);
 
-        zat.onStep = new StepSpy(zat).setFakeCall(zat.getAddress('subroutine'), () => {
+        zat.onStep = new StepMock(zat).setFakeCall('subroutine', () => {
             zat.z80.a += 10;
-        }).stepSpy();
+        }).mock();
         zat.run('start');
         expect(zat.z80.a).toBe(16);
     })
@@ -276,9 +276,9 @@ subroutine:
     ret
         `);
 
-        zat.onStep = new StepSpy(zat).setFakeCall(zat.getAddress('subroutine'), () => {
+        zat.onStep = new StepMock(zat).setFakeCall('subroutine', () => {
             zat.z80.a += 10;
-        }).stepSpy();
+        }).mock();
         zat.call('start', 0xFF00);
         expect(zat.z80.a).toBe(6);
     })
