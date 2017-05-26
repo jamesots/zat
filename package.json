@@ -2,9 +2,8 @@
   "name": "z80test",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "zat.js",
   "scripts": {
-    "start": "ts-node ./src/index.ts",
     "tsc": "tsc",
     "test": "jasmine-ts 'spec/**/*.spec.ts'"
   },
