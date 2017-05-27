@@ -36,9 +36,9 @@ export class Zat {
     public onMemWrite: (addr: number, value: number) => boolean;
 
     /**
-     * onStep is called before every step. Return true to stop execution.
+     * onStep is called before every step.
      */
-    public onStep: (pc: number) => boolean;
+    public onStep: (pc: number) => StepResponse;
 
     /**
      * The symbol table, which is created by the ASM80 compiler. All symbols
@@ -204,11 +204,15 @@ export class Zat {
         this.z80.halted = false;
         let count = 0;
         let tStates = 0;
+        let stepResponse: StepResponse = StepResponse.RUN;
         while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)
-            && !(this.onStep && this.onStep(this.z80.pc))
+            && !(this.onStep && (stepResponse = this.onStep(this.z80.pc)) === StepResponse.BREAK)
             && !(runOptions.call && this.z80.sp === startSp && this.z80.lastInstruction === InstructionType.RET)) {
-            tStates +=this.z80.runInstruction();
-            count++;
+            if (stepResponse !== StepResponse.SKIP) {
+                tStates += this.z80.runInstruction();
+                count++;
+            }
+            stepResponse = StepResponse.RUN;
         }
         return [count, tStates];
     }
@@ -248,7 +252,7 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
     }
 
     public formatBriefRegisters() {
-        return `AF:${hex16(this.z80.af)} BC:${hex16(this.z80.bc)} DE:${hex16(this.z80.de)} HL:${hex16(this.z80.hl)} IX:${hex16(this.z80.ix)} IY:${hex16(this.z80.iy)} SP:${hex16(this.z80.sp)} PC:${hex16(this.z80.pc)}`;
+        return `AF:${hex16(this.z80.af)} BC:${hex16(this.z80.bc)} DE:${hex16(this.z80.de)} HL:${hex16(this.z80.hl)} IX:${hex16(this.z80.ix)} IY:${hex16(this.z80.iy)} SP:${hex16(this.z80.sp)} (SP):${hex8(this.memory[this.z80.sp + 1])}${hex8(this.memory[this.z80.sp])} PC:${hex16(this.z80.pc)}`;
     }
 
     public dumpMemory(start: number, length: number) {
@@ -296,4 +300,10 @@ export interface RunOptions {
     breakAt?: number | string;
     call?: boolean;
     sp?: number | string;
+}
+
+export enum StepResponse {
+    RUN,
+    BREAK,
+    SKIP
 }

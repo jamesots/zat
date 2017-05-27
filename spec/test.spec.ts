@@ -1,4 +1,4 @@
-import { Zat, IoSpy, StepMock, customMatchers, stringToBytes, hex16, Compiler, CompiledProg, Z80 } from '../src/zat';
+import { Zat, IoSpy, StepMock, StepResponse, customMatchers, stringToBytes, hex16, Compiler, CompiledProg, Z80 } from '../src/zat';
 import '../src/matchers';
 
 describe('things', function() {
@@ -57,7 +57,7 @@ breakhere:
 
     it('should use onStep to stop', function() {
         zat.loadProg(prog);
-        zat.onStep = (pc) => pc === zat.getAddress('breakhere');
+        zat.onStep = (pc) => pc === zat.getAddress('breakhere') ? StepResponse.BREAK : StepResponse.RUN;
         zat.run('newstart');
         expect(zat.z80.a).toBe(0x12);
         expect(zat.z80.flags.Z).toBe(1);
