@@ -13,6 +13,7 @@ describe('things', function() {
         jasmine.addMatchers(customMatchers as any);
 
         zat = new Zat();
+        zat.defaultCallSp = 0xFF00;
     });
 
     it('should work with a compiled file', function() {
@@ -94,7 +95,7 @@ extrastart:
         zat.onIoWrite = ioSpy.writeSpy();
         zat.onIoRead = ioSpy.readSpy();
         zat.z80.hl = 0x5000;
-        zat.call('write_line', 0xFF00);
+        zat.call('write_line');
         expect(ioSpy).toBeComplete();
     });
 
@@ -103,7 +104,7 @@ extrastart:
 
         let ioSpy = new IoSpy(zat).onIn([9, '\xff\xff\0'], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
-        zat.call('read_char', 0xFF00);
+        zat.call('read_char');
         expect(zat.z80.a).toEqual(65);
         expect(ioSpy).toBeComplete();
     });
@@ -122,7 +123,7 @@ extrastart:
         zat.onIoWrite = (port, value) => {
             values.push([port & 0xff, value]);
         }
-        zat.call('sound_bell', 0xFF00);
+        zat.call('sound_bell');
         expect(values).toEqual([[6, 0xff], [6, 0]]);
         expect(count).toEqual(0x100 * 0x10 - 1);
     });
@@ -153,7 +154,7 @@ start:
             .onOut(1, 2)
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();
-        zat.call('start', 0xFF00);
+        zat.call('start');
         expect(ioSpy).toBeComplete();
     });
 
@@ -178,7 +179,7 @@ start:
             return readSpy(port);
         }
         zat.onIoWrite = writeSpy;
-        zat.call('read_line', 0xFF00);
+        zat.call('read_line');
         expect(zat.getMemory('line', 6)).toEqual(stringToBytes('hello\0'));
     });
 
@@ -195,7 +196,7 @@ start:
 
         zat.onIoRead = ioSpy.readSpy();
         zat.onIoWrite = ioSpy.writeSpy();
-        zat.call('read_line', 0xFF00);
+        zat.call('read_line');
         expect(zat.getMemory('line', 2)).toEqual(stringToBytes('h\0'));
     });
 
@@ -204,7 +205,7 @@ start:
 
         zat.load('LET\0', 'line');
         zat.z80.hl = zat.getAddress('line');
-        zat.call('compare', 0xFF00);
+        zat.call('compare');
 
         expect(zat.z80.de).toBe(zat.getAddress('let'));
     });
@@ -214,7 +215,7 @@ start:
 
         zat.load('TIME\0', 'line');
         zat.z80.hl = zat.getAddress('line');
-        zat.call('compare', 0xFF00);
+        zat.call('compare');
 
         expect(zat.z80.de).toBe(zat.getAddress('time'));
     });
@@ -224,7 +225,7 @@ start:
 
         zat.load('TIME ', 'line');
         zat.z80.hl = zat.getAddress('line');
-        zat.call('compare', 0xFF00);
+        zat.call('compare');
 
         expect(zat.z80.de).toBe(zat.getAddress('time'));
     });
@@ -234,7 +235,7 @@ start:
 
         zat.load('WIBBLE\0', 'line');
         zat.z80.hl = zat.getAddress('line');
-        zat.call('compare', 0xFF00);
+        zat.call('compare');
 
         expect(zat.z80.de).toBe(zat.getAddress('error'));
     });
@@ -244,7 +245,7 @@ start:
 
         zat.load('LE ', 'line');
         zat.z80.hl = zat.getAddress('line');
-        zat.call('compare', 0xFF00);
+        zat.call('compare');
 
         expect(zat.z80.de).toBe(zat.getAddress('error'));
     });
@@ -254,7 +255,7 @@ start:
 
         zat.load(' ', 'line');
         zat.z80.hl = zat.getAddress('line');
-        zat.call('compare', 0xFF00);
+        zat.call('compare');
 
         expect(zat.z80.de).toBe(zat.getAddress('error'));
     });
@@ -268,7 +269,7 @@ start:
         // }
         zat.load('LETTER\0', 'line');
         zat.z80.hl = zat.getAddress('line');
-        zat.call('compare', 0xFF00);
+        zat.call('compare');
 
         expect(zat.z80.de).toBe(zat.getAddress('error'));
         // zat.dumpMemory(0, 0x300);
@@ -307,7 +308,7 @@ subroutine:
         zat.onStep = new StepMock(zat).setFakeCall('subroutine', () => {
             zat.z80.a += 10;
         }).mock();
-        zat.call('start', 0xFF00);
+        zat.call('start');
         expect(zat.z80.a).toBe(6);
     })
 });
