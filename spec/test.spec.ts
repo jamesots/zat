@@ -291,6 +291,7 @@ subroutine:
 
         zat.onStep = new StepMock(zat).setFakeCall('subroutine', () => {
             zat.z80.a += 10;
+            return StepResponse.RUN;
         }).mock();
         zat.run('start');
         expect(zat.z80.a).toBe(16);
