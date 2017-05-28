@@ -17,17 +17,6 @@ export class StepMock {
         return StepResponse.RUN;
     }
 
-    public setLogger() {
-        this.mocks.push(new LoggerStepMock());
-        return this;
-    }
-
-    public setBreakpoint(pc: number | string) {
-        pc = this.zat.getAddress(pc);
-        this.mocks.push(new BreakpointStepMock(pc));
-        return this;
-    }
-
     public setFakeCall(pc: number | string, func: () => void) {
         pc = this.zat.getAddress(pc);
         this.mocks.push(new FakeCallStepMock(pc, func));
@@ -47,16 +36,6 @@ export class StepMock {
 
 abstract class AbstractStepMock {
     public abstract onStep(zat: Zat, pc: number): StepResponse;
-}
-
-class BreakpointStepMock extends AbstractStepMock {
-    public constructor(private breakpoint) {
-        super();
-    }
-
-    public onStep(zat: Zat, pc: number): StepResponse {
-        return pc === this.breakpoint ? StepResponse.BREAK : StepResponse.RUN;
-    }
 }
 
 class FakeCallStepMock extends AbstractStepMock {
@@ -101,12 +80,5 @@ class OnAllStepsMock extends AbstractStepMock {
 
     public onStep(zat: Zat, pc: number): StepResponse {
         return this.func(pc);
-    }
-}
-
-class LoggerStepMock extends AbstractStepMock {
-    public onStep(zat: Zat, pc: number): StepResponse {
-        console.log(`${zat.formatBriefRegisters()} ${zat.getSymbol(pc)}`);
-        return StepResponse.RUN;
     }
 }

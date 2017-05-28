@@ -18,7 +18,8 @@ describe('things', function() {
 
     it('should work with a compiled file', function() {
         zat.loadProg(prog);
-        zat.run('newstart', {breakAt:'breakhere'});
+        zat.setBreakpoint('breakhere');
+        zat.run('newstart');
         expect(zat.z80.a).toBe(0x12);
         expect(zat.z80.flags.Z).toBe(1);
     });
@@ -40,7 +41,8 @@ breakhere:
     nop
     jp newstart
         `);
-        zat.run('newstart', {breakAt:'breakhere'});
+        zat.setBreakpoint('breakhere');
+        zat.run('newstart');
         expect(zat.z80.a).toBe(0x12);
         expect(zat.z80.flags.Z).toBe(1);
     });
@@ -50,7 +52,8 @@ breakhere:
                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                   0x00, 0x00, 0x00, 0x00, 0xb7, 0x3e, 0x12, 0x00,
                   0x00, 0x00, 0x3e, 0x13, 0x00, 0xc3, 0x14, 0x00]);
-        zat.run(20, {breakAt:26});
+        zat.setBreakpoint(26);
+        zat.run(20);
         expect(zat.z80.a).toBe(0x12);
         expect(zat.z80.flags.Z).toBe(1);
     });
@@ -72,7 +75,8 @@ breakhere:
 extrastart:
     jp ${zat.getAddress('newstart')}
         `, 40);
-        zat.run('extrastart', {breakAt:'breakhere'});
+        zat.setBreakpoint('breakhere');
+        zat.run('extrastart');
         expect(zat.z80.a).toBe(0x12);
         expect(zat.z80.flags.Z).toBe(1);
     });

@@ -11,6 +11,8 @@ export class Zat {
     public readonly z80: Z80;
     public readonly memory = new Uint8Array(65536);
     private stepMock = new StepMock(this);
+    private logging = false;
+    private breakpoints: {[addr: number]: true} = {};
 
     /**
      * If ioRead has been set, it will be called when an IO read occurrs.
@@ -192,18 +194,19 @@ export class Zat {
         if (runOptions.steps !== undefined) {
             steps = runOptions.steps;
         } 
-        let breakAt = undefined;
-        if (runOptions.breakAt !== undefined) {
-            breakAt = this.getAddress(runOptions.breakAt);
-        }
 
         this.z80.halted = false;
         let count = 0;
         let tStates = 0;
         let stepResponse: StepResponse = StepResponse.RUN;
-        while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)
+        while (!this.z80.halted && (count < steps) 
+            && !this.breakpoints[this.z80.pc]
             && !((stepResponse = this.stepMock.onStep(this.z80.pc)) === StepResponse.BREAK)
             && !(runOptions.call && this.z80.sp === startSp && this.z80.lastInstruction === InstructionType.RET)) {
+
+            if (this.logging) {
+                console.log(`${this.formatBriefRegisters()} ${this.getSymbol(this.z80.pc)}`);
+            }
             if (stepResponse !== StepResponse.SKIP) {
                 tStates += this.z80.runInstruction();
                 count++;
@@ -288,15 +291,19 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
      * executed, stop execution.
      */
     public setBreakpoint(addr: number | string) {
-        this.stepMock.setBreakpoint(addr);
+        this.breakpoints[this.getAddress(addr)] = true;
+    }
+
+    public clearBreakpoint(addr: number | string) {
+        delete this.breakpoints[this.getAddress(addr)];
     }
 
     /**
      * Log the registers at each step of execution. The register
      * values are logged before the instruction is executed.
      */
-    public logSteps() {
-        this.stepMock.setLogger();
+    public logSteps(on = true) {
+        this.logging = on;
     }
 
     /**
@@ -341,7 +348,6 @@ export function stringToBytes(str: string): number[] {
 
 export interface RunOptions {
     steps?: number;
-    breakAt?: number | string;
     call?: boolean;
     sp?: number | string;
 }
