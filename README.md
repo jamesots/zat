@@ -22,7 +22,8 @@ The idea is that you can do something like this:
             ld a,$ff
             halt
         `)
-        zat.run('newstart', {breakAt:'breakhere'});
+        zat.setBreakpoint('breakhere');
+        zat.run('newstart');
         expect(zat.z80.a).toBe(0x12);
     });
 
