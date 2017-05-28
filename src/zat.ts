@@ -3,13 +3,14 @@ export { Z80, Flags, InstructionType } from './z80/Z80';
 import { Compiler, CompiledProg } from './compiler';
 export { Compiler, CompiledProg } from './compiler';
 export { IoSpy } from './io_spies';
-export { StepMock } from './step_mocks';
+import { StepMock } from './step_mocks';
 export { customMatchers } from './custom_matchers';
 import * as fs from 'fs';
 
 export class Zat {
     public readonly z80: Z80;
     public readonly memory = new Uint8Array(65536);
+    private stepMock = new StepMock(this);
 
     /**
      * If ioRead has been set, it will be called when an IO read occurrs.
@@ -34,11 +35,6 @@ export class Zat {
      * the value will be written to the internal memory.
      */
     public onMemWrite: (addr: number, value: number) => boolean;
-
-    /**
-     * onStep is called before every step.
-     */
-    public onStep: (pc: number) => StepResponse;
 
     /**
      * The symbol table, which is created by the ASM80 compiler. All symbols
@@ -206,7 +202,7 @@ export class Zat {
         let tStates = 0;
         let stepResponse: StepResponse = StepResponse.RUN;
         while (!this.z80.halted && (count < steps) && (this.z80.pc !== breakAt)
-            && !(this.onStep && (stepResponse = this.onStep(this.z80.pc)) === StepResponse.BREAK)
+            && !((stepResponse = this.stepMock.onStep(this.z80.pc)) === StepResponse.BREAK)
             && !(runOptions.call && this.z80.sp === startSp && this.z80.lastInstruction === InstructionType.RET)) {
             if (stepResponse !== StepResponse.SKIP) {
                 tStates += this.z80.runInstruction();
@@ -274,6 +270,54 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
                 ascii = '';
             }
         }
+    }
+
+    /**
+     * Every time addr is called, func will be executed, and then
+     * control will return to wherever it was called from.
+     * 
+     * func will only be executed as a result of a CALL or RST, not
+     * if execution passes to the address in any other way.
+     */
+    public mockCall(addr: number | string, func: () => void) {
+        this.stepMock.setFakeCall(addr, func);
+    }
+
+    /**
+     * When addr is reached, and before the instruction at addr is
+     * executed, stop execution.
+     */
+    public setBreakpoint(addr: number | string) {
+        this.stepMock.setBreakpoint(addr);
+    }
+
+    /**
+     * Log the registers at each step of execution. The register
+     * values are logged before the instruction is executed.
+     */
+    public logSteps() {
+        this.stepMock.setLogger();
+    }
+
+    /**
+     * Call func before the instruction at addr is executed. func should
+     * return RUN, BREAK or SKIP.
+     * 
+     * If RUN is returned, execution continues as usual.
+     * If BREAK is returned, execution stops.
+     * If SKIP is returned, execution continues, but the current instruction
+     * is not executed. Note that if func doesn't change the PC then 
+     * func will immediately be called over an over again.
+     */
+    public mockStep(addr: number | string, func: () => StepResponse) {
+        this.stepMock.setOnStep(addr, func);
+    }
+
+    /**
+     * Like mockStep, except that func is executed for every step.
+     */
+    public mockAllSteps(func: (pc) => StepResponse) {
+        this.stepMock.setOnAllSteps(func);
     }
 }
 

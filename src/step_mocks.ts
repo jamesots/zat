@@ -6,17 +6,15 @@ export class StepMock {
 
     constructor(private zat: Zat) {}
 
-    mock(): (pc: number) => StepResponse {
-        return (pc: number) => {
-            // stops at the first mock which returns a non-RUN status 
-            for (const mock of this.mocks) {
-                const result = mock.onStep(this.zat, pc);
-                if (result !== StepResponse.RUN) {
-                    return result;
-                }
+    onStep(pc: number): StepResponse {
+        // stops at the first mock which returns a non-RUN status 
+        for (const mock of this.mocks) {
+            const result = mock.onStep(this.zat, pc);
+            if (result !== StepResponse.RUN) {
+                return result;
             }
-            return StepResponse.RUN;
         }
+        return StepResponse.RUN;
     }
 
     public setLogger() {
@@ -41,7 +39,11 @@ export class StepMock {
         this.mocks.push(new OnStepMock(pc, func));
         return this;
     }
-}
+
+    public setOnAllSteps(func: (pc) => StepResponse) {
+        this.mocks.push(new OnAllStepsMock(func));
+        return this;
+    }}
 
 abstract class AbstractStepMock {
     public abstract onStep(zat: Zat, pc: number): StepResponse;
@@ -89,6 +91,16 @@ class OnStepMock extends AbstractStepMock {
             return this.func();
         }
         return StepResponse.RUN;
+    }
+}
+
+class OnAllStepsMock extends AbstractStepMock {
+    public constructor(private func: (pc: number) => StepResponse) {
+        super();
+    }
+
+    public onStep(zat: Zat, pc: number): StepResponse {
+        return this.func(pc);
     }
 }
 
