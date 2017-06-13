@@ -255,7 +255,8 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
     }
 
     public formatBriefRegisters() {
-        return `AF:${hex16(this.z80.af)} BC:${hex16(this.z80.bc)} DE:${hex16(this.z80.de)} HL:${hex16(this.z80.hl)} IX:${hex16(this.z80.ix)} IY:${hex16(this.z80.iy)} SP:${hex16(this.z80.sp)} (SP):${hex8(this.memory[this.z80.sp + 1])}${hex8(this.memory[this.z80.sp])} PC:${hex16(this.z80.pc)}`;
+        const flags = `${this.z80.flags.S == 1 ? 'S' : '.'}${this.z80.flags.Z == 1 ? 'Z' : '.'}${this.z80.flags.H == 1 ? 'H' : '.'}${this.z80.flags.P == 1 ? 'P' : '.'}${this.z80.flags.N == 1 ? 'N' : '.'}${this.z80.flags.C == 1 ? 'C' : '.'}`;
+        return `AF:${hex16(this.z80.af)} ${flags} BC:${hex16(this.z80.bc)} DE:${hex16(this.z80.de)} HL:${hex16(this.z80.hl)} IX:${hex16(this.z80.ix)} IY:${hex16(this.z80.iy)} SP:${hex16(this.z80.sp)} (SP):${hex8(this.memory[this.z80.sp + 1])}${hex8(this.memory[this.z80.sp])} PC:${hex16(this.z80.pc)}`;
     }
 
     public dumpMemory(start: number, length: number) {
