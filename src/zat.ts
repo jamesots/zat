@@ -143,7 +143,11 @@ export class Zat {
 
     public getAddress(addr: number | string) {
         if (typeof addr === 'string') {
-            return this.symbols[addr.toUpperCase()];
+            const address = this.symbols[addr.toUpperCase()];
+            if (typeof address === 'undefined') {
+                throw `Symbol "${addr}" not found`;
+            }
+            return address;
         }
         return addr;
     }
