@@ -109,6 +109,7 @@ export class Zat {
     public compile(code: string, start?: number | string) {
         let compiled = new Compiler().compile(code);
         this.loadProg(compiled, start);
+        return compiled;
     }
 
     public loadProg(prog: CompiledProg, start?: number | string) {
@@ -197,7 +198,13 @@ export class Zat {
         let steps = 10000000;
         if (runOptions.steps !== undefined) {
             steps = runOptions.steps;
-        } 
+        }
+        let coverage;
+        if (runOptions.coverage !== undefined) {
+            coverage = runOptions.coverage;
+        } else {
+            coverage = {};
+        }
 
         this.z80.halted = false;
         let count = 0;
@@ -212,12 +219,16 @@ export class Zat {
                 console.log(`${this.formatBriefRegisters()} ${this.getSymbol(this.z80.pc)}`);
             }
             if (stepResponse !== StepResponse.SKIP) {
+                if (coverage[this.z80.pc] === undefined) {
+                    coverage[this.z80.pc] = 0;
+                }
+                coverage[this.z80.pc]++;
                 tStates += this.z80.runInstruction();
                 count++;
             }
             stepResponse = StepResponse.RUN;
         }
-        return [count, tStates];
+        return [count, tStates, coverage];
     }
 
     saveMemory() {
@@ -331,6 +342,21 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
     public mockAllSteps(func: (pc) => StepResponse) {
         this.stepMock.setOnAllSteps(func);
     }
+
+    public showCoverage(prog: CompiledProg, coverage: Coverage) {
+        let lines = 0;
+        let coveredLines = 0;
+        for (const line of prog.ast) {
+            lines++;
+            let count = 0;
+            if (coverage[line.addr] > 0) {
+                count = coverage[line.addr];
+                coveredLines++;
+            }
+            console.log(`${count}  ${line.numline}: ${line.line}`);
+        }
+        console.log(`${(coveredLines/lines*100).toFixed(1)}% covered`);
+    }
 }
 
 export function hex8(num: number): string {
@@ -351,10 +377,15 @@ export function stringToBytes(str: string): number[] {
     return bytes;
 }
 
+export interface Coverage {
+    [address: number]: number;
+}
+
 export interface RunOptions {
     steps?: number;
     call?: boolean;
     sp?: number | string;
+    coverage?: Coverage
 }
 
 export enum StepResponse {

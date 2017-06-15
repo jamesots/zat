@@ -299,7 +299,7 @@ subroutine:
         });
         zat.run('start');
         expect(zat.z80.a).toBe(16);
-    })
+    });
 
     it('should not intercept a call if there is no call statement', function() {
         zat.compile(`
@@ -315,5 +315,22 @@ subroutine:
         });
         zat.call('start');
         expect(zat.z80.a).toBe(6);
-    })
+    });
+
+    it('should show coverage', function() {
+        let prog = zat.compile(`
+start:
+    ld a,5
+    call subroutine
+    halt
+    out (2),a
+subroutine:
+    add a,1
+    ret
+        `);
+
+        let [count, tStates, coverage] = zat.run('start');
+        expect(zat.z80.a).toBe(6);
+        zat.showCoverage(prog, coverage);
+    });
 });

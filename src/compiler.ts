@@ -5,6 +5,19 @@ import * as fs from 'fs';
 export interface CompiledProg {
     data: Buffer;
     symbols: {[symbol: string]: number};
+    ast: {
+        line: string;
+        numline: number;
+        addr: number;
+        bytes: number;
+        notparsed: string;
+        pass: number;
+        opcode?: string;
+        paramstring?: string;
+        params?: string[];
+        lens?: number[];
+        label?: string;
+    }[];
 }
 
 export class Compiler {
@@ -25,7 +38,8 @@ export class Compiler {
 
         return {
             data: prog,
-            symbols: vx[1]
+            symbols: vx[1],
+            ast: vx[0]
         };
     }
 
