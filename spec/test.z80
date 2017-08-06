@@ -147,9 +147,9 @@ found_jump:
     jp compare_next_word
 
 ; store an address with MSB first, with bit 7 set to 1
-.macro djump
-    db (%%1 / $100) + $80
-    db %%1 & $ff
+.macro djump xx
+    db (xx / $100) + $80
+    db xx & $ff
 .endm
 
 let:

@@ -118,7 +118,7 @@ export class Zat {
         }
         if (start !== undefined) {
             start = this.getAddress(start);
-            this.load(prog.data.subarray(start), start);
+            this.load(prog.data, start);
         } else {
             this.load(prog.data);
         }
@@ -144,7 +144,7 @@ export class Zat {
 
     public getAddress(addr: number | string) {
         if (typeof addr === 'string') {
-            const address = this.symbols[addr.toUpperCase()];
+            const address = this.symbols[addr.toLowerCase()];
             if (typeof address === 'undefined') {
                 throw `Symbol "${addr}" not found`;
             }

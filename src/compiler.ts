@@ -1,46 +1,54 @@
-import * as ASM from 'asm80/asm';
-import * as Monolith from 'asm80/monolith';
+import * as maz from 'maz/lib/compiler';
+import * as els from 'maz/lib/els';
 import * as fs from 'fs';
 
-export interface CompiledProg {
-    data: Buffer;
-    symbols: {[symbol: string]: number};
-    ast: {
-        line: string;
-        numline: number;
-        addr: number;
-        bytes: number;
-        notparsed: string;
-        pass: number;
-        opcode?: string;
-        paramstring?: string;
-        params?: string[];
-        lens?: number[];
-        label?: string;
-    }[];
+export class CompiledProg {
+    public constructor(
+        public data: Buffer, 
+        public symbols: {[symbol: string]: number}, 
+        public list: string[],
+        public ast: els.Element[],
+        public sources: maz.Source[]
+    ) {}
+
+    public dumpList() {
+        for (const line of this.list) {
+            console.log(line);
+        }
+    }
 }
 
 export class Compiler {
     private RAM = new Uint8Array(65536);
 
     public compile(code): CompiledProg {
-        const [error, vx] = ASM.compile(code, Monolith.Z80);
+        const prog = maz.compile('code', {
+            fileResolver: new maz.StringFileResolver('code', code.split('\n'))
+        });
+        // console.log(prog.symbols);
+        return new CompiledProg(
+            new Buffer(prog.getBytes()), // wrong origin
+            prog.symbols,
+            prog.getList(false),
+            prog.ast,
+            prog.sources
+        );
+        // const [error, vx] = ASM.compile(code, Monolith.Z80);
 
-        if (error) {
-            throw `${error.msg} (${error.s.numline}:${error.s.line})`;
-        }
-        // console.log(JSON.stringify(vx, undefined, 2));
+        // if (error) {
+        //     throw `${error.msg} (${error.s.numline}:${error.s.line})`;
+        // }
+        // // console.log(JSON.stringify(vx, undefined, 2));
 
-        const [parseTree, symbols] = vx;
-        const outdata = ASM.hex(parseTree);
+        // const [parseTree, symbols] = vx;
+        // const outdata = ASM.hex(parseTree);
 
-        const prog = this.hex2bytes(outdata);
+        // const prog = this.hex2bytes(outdata);
 
-        return {
-            data: prog,
-            symbols: vx[1],
-            ast: vx[0]
-        };
+        // return {
+        //     data: prog,
+        //     symbols: vx[1]
+        // };
     }
 
     public compileFile(filename: string): CompiledProg {
