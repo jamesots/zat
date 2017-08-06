@@ -2,6 +2,7 @@ import { Z80, Flags, InstructionType } from './z80/Z80';
 export { Z80, Flags, InstructionType } from './z80/Z80';
 import { Compiler, CompiledProg } from './compiler';
 export { Compiler, CompiledProg } from './compiler';
+import * as els from 'maz/lib/els';
 export { IoSpy } from './io_spies';
 import { StepMock } from './step_mocks';
 export { customMatchers } from './custom_matchers';
@@ -347,13 +348,15 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
         let lines = 0;
         let coveredLines = 0;
         for (const line of prog.ast) {
-            lines++;
-            let count = 0;
-            if (coverage[line.addr] > 0) {
-                count = coverage[line.addr];
-                coveredLines++;
+            if (els.isBytes(line)) {
+                lines++;
+                let count = 0;
+                if (coverage[line.address] > 0) {
+                    count = coverage[line.address];
+                    coveredLines++;
+                }
+                console.log(`${count}  ${line.location.line}: ${prog.sources[line.location.source].source[line.location.line - 1]}`); // TODO
             }
-            console.log(`${count}  ${line.numline}: ${line.line}`);
         }
         console.log(`${(coveredLines/lines*100).toFixed(1)}% covered`);
     }
