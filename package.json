@@ -21,6 +21,6 @@
     "typescript": "2.9.2"
   },
   "dependencies": {
-    "maz": "0.4.3"
+    "maz": "0.4.5"
   }
 }
