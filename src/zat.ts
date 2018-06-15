@@ -40,7 +40,7 @@ export class Zat {
     public onMemWrite: (addr: number, value: number) => boolean;
 
     /**
-     * The symbol table, which is created by the ASM80 compiler. All symbols
+     * The symbol table, which is created by the maz compiler. All symbols
      * are in upper case.
      */
     public symbols: {[addr: string]: number} = {};
@@ -97,7 +97,7 @@ export class Zat {
     }
 
     /**
-     * Compile some Z80 code, using the ASM80 compiler.
+     * Compile some Z80 code, using the maz compiler.
      * 
      * start is the address of the first byte that should be loaded into
      * memory — you still need to use an 'org' directive in your source code.
@@ -126,7 +126,7 @@ export class Zat {
     }
 
     /**
-     * Compile some Z80 code from a file, using the ASM80 compiler.
+     * Compile some Z80 code from a file, using the maz compiler.
      */
     public compileFile(filename: string, start?: number | string) {
         let compiled = new Compiler().compileFile(filename);
