@@ -2746,8 +2746,8 @@ export class Z80 {
         this.ddInstructions[0xcb] = () => {
             this.pc = (this.pc + 1) & 0xffff;
             var offset = this.getSignedOffsetByte(this.core.memRead(this.pc));
-            this.pc = (this.pc + 1) & 0xffff;
             var opcode = this.core.memRead(this.pc), value;
+            this.pc = (this.pc + 1) & 0xffff;
 
             // As with the "normal" CB prefix, we implement the DDCB prefix
             //  by decoding the opcode directly, rather than using a table.

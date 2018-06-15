@@ -13,14 +13,14 @@
   "author": "James Ots <code@jamesots.com>",
   "license": "MIT",
   "devDependencies": {
-    "@types/jasmine": "2.5.47",
-    "@types/node": "7.0.22",
-    "jasmine": "2.6.0",
-    "jasmine-ts": "0.1.2",
-    "ts-node": "3.0.4",
-    "typescript": "2.3.3"
+    "@types/jasmine": "2.8.8",
+    "@types/node": "8.10.20",
+    "jasmine": "3.1.0",
+    "jasmine-ts": "0.2.1",
+    "ts-node": "6.1.1",
+    "typescript": "2.9.2"
   },
   "dependencies": {
-    "maz": "0.4.1"
+    "maz": "0.4.3"
   }
 }
