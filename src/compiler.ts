@@ -27,7 +27,7 @@ export class Compiler {
         });
         // console.log(prog.symbols);
         return new CompiledProg(
-            new Buffer(prog.getBytes()), // wrong origin
+            Buffer.from(prog.getBytes()), // wrong origin
             prog.symbols,
             prog.getList(false),
             prog.ast,

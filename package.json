@@ -1,6 +1,6 @@
 {
   "name": "zat",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "",
   "main": "lib/zat.js",
   "types": "lib/zat.d.ts",
@@ -13,12 +13,12 @@
   "author": "James Ots <code@jamesots.com>",
   "license": "MIT",
   "devDependencies": {
-    "@types/jasmine": "^3.5.10",
-    "@types/node": "^13.9.8",
-    "jasmine": "^3.5.0",
-    "jasmine-ts": "^0.3.0",
-    "ts-node": "^8.8.1",
-    "typescript": "^3.8.3"
+    "@types/jasmine": "^3.7.6",
+    "@types/node": "^14.17.1",
+    "jasmine": "^3.7.0",
+    "jasmine-ts": "^0.3.3",
+    "ts-node": "^10.0.0",
+    "typescript": "^4.3.2"
   },
   "dependencies": {
     "maz": "0.4.5"
