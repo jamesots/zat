@@ -8,15 +8,25 @@
     "prepublish": "tsc",
     "build": "tsc",
     "tsc": "tsc",
-    "test": "jasmine-ts 'spec/**/*.spec.ts'"
+    "test": "jasmine-ts 'spec/**/*.spec.ts'",
+    "prepare": "husky install",
+    "lint-staged": "lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "prettier --write"
+    ]
   },
   "author": "James Ots <code@jamesots.com>",
   "license": "MIT",
   "devDependencies": {
     "@types/jasmine": "^3.7.6",
     "@types/node": "^14.17.1",
+    "husky": "^6.0.0",
     "jasmine": "^3.7.0",
     "jasmine-ts": "^0.3.3",
+    "lint-staged": "^11.0.0",
+    "prettier": "^2.3.0",
     "ts-node": "^10.0.0",
     "typescript": "^4.3.2"
   },

@@ -13,7 +13,7 @@ export class Zat {
     public readonly memory = new Uint8Array(65536);
     private stepMock = new StepMock(this);
     private logging = false;
-    private breakpoints: {[addr: number]: true} = {};
+    private breakpoints: { [addr: number]: true } = {};
 
     /**
      * If ioRead has been set, it will be called when an IO read occurrs.
@@ -43,7 +43,7 @@ export class Zat {
      * The symbol table, which is created by the maz compiler. All symbols
      * are in upper case.
      */
-    public symbols: {[addr: string]: number} = {};
+    public symbols: { [addr: string]: number } = {};
 
     /**
      * When using call(), set the stack pointer to this value before starting, if set
@@ -52,10 +52,10 @@ export class Zat {
 
     constructor() {
         this.z80 = new Z80({
-            memRead: addr => this.memRead(addr),
+            memRead: (addr) => this.memRead(addr),
             memWrite: (addr, value) => this.memWrite(addr, value),
-            ioRead: port => this.ioRead(port),
-            ioWrite: (port, value) => this.ioWrite(port, value)
+            ioRead: (port) => this.ioRead(port),
+            ioWrite: (port, value) => this.ioWrite(port, value),
         });
     }
 
@@ -98,10 +98,10 @@ export class Zat {
 
     /**
      * Compile some Z80 code, using the maz compiler.
-     * 
+     *
      * start is the address of the first byte that should be loaded into
      * memory — you still need to use an 'org' directive in your source code.
-     * 
+     *
      * E.g. compile("org 5\n ret") would load "0 0 0 0 0 c9" at address 0,
      * compile("org 5\n ret",5) would load "c9" at address 5,
      * compile("ret") would load "c9" at adress 0
@@ -136,7 +136,10 @@ export class Zat {
     /**
      * Load some values into memory
      */
-    public load(mem: number[] | Uint8Array | string, start: number | string = 0) {
+    public load(
+        mem: number[] | Uint8Array | string,
+        start: number | string = 0
+    ) {
         if (typeof mem === 'string') {
             mem = stringToBytes(mem);
         }
@@ -180,11 +183,11 @@ export class Zat {
      * Run until a HALT is encountered, or number of instructions executed is
      * more than runOptions.steps, or instruction at runOptions.breakAt is
      * reached.
-     * 
+     *
      * If 'call' is true, it will run until the stack pointer is 2 more than it
      * started out at. This may happen as a result of popping something of the
      * stack rather than a return statement.
-     * 
+     *
      * Returns the number of instructions executed and the number of T-states
      */
     public run(start?: number | string, runOptions?: RunOptions) {
@@ -211,13 +214,26 @@ export class Zat {
         let count = 0;
         let tStates = 0;
         let stepResponse: StepResponse = StepResponse.RUN;
-        while (!this.z80.halted && (count < steps) 
-            && !this.breakpoints[this.z80.pc]
-            && !((stepResponse = this.stepMock.onStep(this.z80.pc)) === StepResponse.BREAK)
-            && !(runOptions.call && this.z80.sp === startSp && this.z80.lastInstruction === InstructionType.RET)) {
-
+        while (
+            !this.z80.halted &&
+            count < steps &&
+            !this.breakpoints[this.z80.pc] &&
+            !(
+                (stepResponse = this.stepMock.onStep(this.z80.pc)) ===
+                StepResponse.BREAK
+            ) &&
+            !(
+                runOptions.call &&
+                this.z80.sp === startSp &&
+                this.z80.lastInstruction === InstructionType.RET
+            )
+        ) {
             if (this.logging) {
-                console.log(`${this.formatBriefRegisters()} ${this.getSymbol(this.z80.pc)}`);
+                console.log(
+                    `${this.formatBriefRegisters()} ${this.getSymbol(
+                        this.z80.pc
+                    )}`
+                );
             }
             if (stepResponse !== StepResponse.SKIP) {
                 if (coverage[this.z80.pc] === undefined) {
@@ -239,8 +255,8 @@ export class Zat {
         }
         return {
             memory: new Uint8Array(this.memory),
-            symbols: savedSymbols
-        }
+            symbols: savedSymbols,
+        };
     }
 
     loadMemory(savedMemory) {
@@ -253,7 +269,7 @@ export class Zat {
 
     public showRegisters() {
         console.log(
-`AF: ${hex16(this.z80.af)}  AF': ${hex16(this.z80.af_)}
+            `AF: ${hex16(this.z80.af)}  AF': ${hex16(this.z80.af_)}
 BC: ${hex16(this.z80.bc)}  BC': ${hex16(this.z80.bc_)}
 DE: ${hex16(this.z80.de)}  DE': ${hex16(this.z80.de_)}
 HL: ${hex16(this.z80.hl)}  HL': ${hex16(this.z80.hl_)}
@@ -261,14 +277,35 @@ IX: ${hex16(this.z80.ix)}   IY: ${hex16(this.z80.iy)}
 PC: ${hex16(this.z80.pc)}   SP: ${hex16(this.z80.sp)}
 I: ${hex16(this.z80.i)}    R: ${hex16(this.z80.r)}
     S Z Y H X P N C
-F: ${this.z80.flags.S} ${this.z80.flags.Z} ${this.z80.flags.Y} ${this.z80.flags.H} ${this.z80.flags.X} ${this.z80.flags.P} ${this.z80.flags.N} ${this.z80.flags.C}
-F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.flags_.H} ${this.z80.flags_.X} ${this.z80.flags_.P} ${this.z80.flags_.N} ${this.z80.flags_.C}
-`);
+F: ${this.z80.flags.S} ${this.z80.flags.Z} ${this.z80.flags.Y} ${
+                this.z80.flags.H
+            } ${this.z80.flags.X} ${this.z80.flags.P} ${this.z80.flags.N} ${
+                this.z80.flags.C
+            }
+F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${
+                this.z80.flags_.H
+            } ${this.z80.flags_.X} ${this.z80.flags_.P} ${this.z80.flags_.N} ${
+                this.z80.flags_.C
+            }
+`
+        );
     }
 
     public formatBriefRegisters() {
-        const flags = `${this.z80.flags.S == 1 ? 'S' : '.'}${this.z80.flags.Z == 1 ? 'Z' : '.'}${this.z80.flags.H == 1 ? 'H' : '.'}${this.z80.flags.P == 1 ? 'P' : '.'}${this.z80.flags.N == 1 ? 'N' : '.'}${this.z80.flags.C == 1 ? 'C' : '.'}`;
-        return `AF:${hex16(this.z80.af)} ${flags} BC:${hex16(this.z80.bc)} DE:${hex16(this.z80.de)} HL:${hex16(this.z80.hl)} IX:${hex16(this.z80.ix)} IY:${hex16(this.z80.iy)} SP:${hex16(this.z80.sp)} (SP):${hex8(this.memory[this.z80.sp + 1])}${hex8(this.memory[this.z80.sp])} PC:${hex16(this.z80.pc)}`;
+        const flags = `${this.z80.flags.S == 1 ? 'S' : '.'}${
+            this.z80.flags.Z == 1 ? 'Z' : '.'
+        }${this.z80.flags.H == 1 ? 'H' : '.'}${
+            this.z80.flags.P == 1 ? 'P' : '.'
+        }${this.z80.flags.N == 1 ? 'N' : '.'}${
+            this.z80.flags.C == 1 ? 'C' : '.'
+        }`;
+        return `AF:${hex16(this.z80.af)} ${flags} BC:${hex16(
+            this.z80.bc
+        )} DE:${hex16(this.z80.de)} HL:${hex16(this.z80.hl)} IX:${hex16(
+            this.z80.ix
+        )} IY:${hex16(this.z80.iy)} SP:${hex16(this.z80.sp)} (SP):${hex8(
+            this.memory[this.z80.sp + 1]
+        )}${hex8(this.memory[this.z80.sp])} PC:${hex16(this.z80.pc)}`;
     }
 
     public dumpMemory(start: number, length: number) {
@@ -295,7 +332,7 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
     /**
      * Every time addr is called, func will be executed, and then
      * control will return to wherever it was called from.
-     * 
+     *
      * func will only be executed as a result of a CALL or RST, not
      * if execution passes to the address in any other way.
      */
@@ -326,11 +363,11 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
     /**
      * Call func before the instruction at addr is executed. func should
      * return RUN, BREAK or SKIP.
-     * 
+     *
      * If RUN is returned, execution continues as usual.
      * If BREAK is returned, execution stops.
      * If SKIP is returned, execution continues, but the current instruction
-     * is not executed. Note that if func doesn't change the PC then 
+     * is not executed. Note that if func doesn't change the PC then
      * func will immediately be called over an over again.
      */
     public mockStep(addr: number | string, func: () => StepResponse) {
@@ -355,10 +392,16 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${this.z80.fl
                     count = coverage[line.address];
                     coveredLines++;
                 }
-                console.log(`${count}  ${line.location.line}: ${prog.sources[line.location.source].source[line.location.line - 1]}`); // TODO
+                console.log(
+                    `${count}  ${line.location.line}: ${
+                        prog.sources[line.location.source].source[
+                            line.location.line - 1
+                        ]
+                    }`
+                ); // TODO
             }
         }
-        console.log(`${(coveredLines/lines*100).toFixed(1)}% covered`);
+        console.log(`${((coveredLines / lines) * 100).toFixed(1)}% covered`);
     }
 }
 
@@ -388,11 +431,11 @@ export interface RunOptions {
     steps?: number;
     call?: boolean;
     sp?: number | string;
-    coverage?: Coverage
+    coverage?: Coverage;
 }
 
 export enum StepResponse {
     RUN,
     BREAK,
-    SKIP
+    SKIP,
 }

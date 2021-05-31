@@ -3,4 +3,3 @@ declare namespace jasmine {
         toBeComplete(): boolean;
     }
 }
-

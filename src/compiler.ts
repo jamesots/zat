@@ -4,8 +4,8 @@ import * as fs from 'fs';
 
 export class CompiledProg {
     public constructor(
-        public data: Buffer, 
-        public symbols: {[symbol: string]: number}, 
+        public data: Buffer,
+        public symbols: { [symbol: string]: number },
         public list: string[],
         public ast: els.Element[],
         public sources: maz.Source[]
@@ -23,7 +23,7 @@ export class Compiler {
 
     public compile(code): CompiledProg {
         const prog = maz.compile('code', {
-            fileResolver: new maz.StringFileResolver('code', code.split('\n'))
+            fileResolver: new maz.StringFileResolver('code', code.split('\n')),
         });
         // console.log(prog.symbols);
         return new CompiledProg(
@@ -58,7 +58,9 @@ export class Compiler {
 
     private hexLine(ln, offset) {
         let i;
-        if (ln[0] !== ':') { return false; }
+        if (ln[0] !== ':') {
+            return false;
+        }
         const len = parseInt(ln[1] + ln[2], 16);
         const start = parseInt(ln[3] + ln[4] + ln[5] + ln[6], 16);
         const typ = parseInt(ln[7] + ln[8], 16);
@@ -66,7 +68,10 @@ export class Compiler {
         let addrx;
         if (typ === 0) {
             for (i = 0; i < len; i++) {
-                this.RAM[start + i + offset] = parseInt(ln[9 + 2 * i] + ln[10 + 2 * i], 16);
+                this.RAM[start + i + offset] = parseInt(
+                    ln[9 + 2 * i] + ln[10 + 2 * i],
+                    16
+                );
                 addrx = start + i;
             }
         }

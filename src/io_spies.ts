@@ -8,7 +8,10 @@ export class IoSpy {
 
     public readSpy() {
         return (port: number) => {
-            const returnValue = this.spies[this.spyIndex].onRead(this.zat, port);
+            const returnValue = this.spies[this.spyIndex].onRead(
+                this.zat,
+                port
+            );
             if (this.spies[this.spyIndex].finished) {
                 this.spyIndex++;
             }
@@ -27,14 +30,14 @@ export class IoSpy {
 
     /**
      * Return values to specified ports when IO read operations occurr.
-     * 
+     *
      * The values array contains an array of tuples. The first value in the tuple
      * is the port on which a read is expected. The test will fail if a read occurrs
      * on a different port. The second value in the tuple is the number to return.
-     * 
+     *
      * If more IO reads occurr than there are values in the array, the test will fail,
      * and 0 will be returned.
-     * 
+     *
      * @param values an array of tuples
      */
     public onIn(...values) {

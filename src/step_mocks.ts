@@ -7,7 +7,7 @@ export class StepMock {
     constructor(private zat: Zat) {}
 
     onStep(pc: number): StepResponse {
-        // stops at the first mock which returns a non-RUN status 
+        // stops at the first mock which returns a non-RUN status
         for (const mock of this.mocks) {
             const result = mock.onStep(this.zat, pc);
             if (result !== StepResponse.RUN) {
@@ -32,7 +32,8 @@ export class StepMock {
     public setOnAllSteps(func: (pc) => StepResponse) {
         this.mocks.push(new OnAllStepsMock(func));
         return this;
-    }}
+    }
+}
 
 abstract class AbstractStepMock {
     public abstract onStep(zat: Zat, pc: number): StepResponse;
@@ -44,10 +45,12 @@ class FakeCallStepMock extends AbstractStepMock {
     }
 
     public onStep(zat: Zat, pc: number): StepResponse {
-        if (pc === this.addr && (
-            zat.z80.lastInstruction === InstructionType.CALL
-            || zat.z80.lastInstruction === InstructionType.INT
-            || zat.z80.lastInstruction === InstructionType.RST)) {
+        if (
+            pc === this.addr &&
+            (zat.z80.lastInstruction === InstructionType.CALL ||
+                zat.z80.lastInstruction === InstructionType.INT ||
+                zat.z80.lastInstruction === InstructionType.RST)
+        ) {
             this.func();
             zat.z80.pc = zat.z80.popWord();
             zat.z80.lastInstruction = InstructionType.RET;

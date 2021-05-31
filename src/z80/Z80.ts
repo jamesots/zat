@@ -23,25 +23,26 @@
 ///  or at http://opensource.org/licenses/MIT
 ///////////////////////////////////////////////////////////////////////////////
 /// https://github.com/DrGoldfire/Z80.js
-"use strict";
+'use strict';
 
 export enum InstructionType {
     CALL,
     RET,
     RST,
     INT,
-    OTHER
+    OTHER,
 }
 
-export interface Flags { 
-    S: number,
-    Z: number,
-    Y: number,
-    H: number,
-    X: number,
-    P: number,
-    N: number,
-    C: number }
+export interface Flags {
+    S: number;
+    Z: number;
+    Y: number;
+    H: number;
+    X: number;
+    P: number;
+    N: number;
+    C: number;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// We'll begin with the object constructor and the private API functions.
@@ -105,13 +106,17 @@ export class Z80 {
         // ioRead(port) should read a return a byte read from the given I/O port,
         // ioWrite(port, value) should write the given byte to the given I/O port.
         // If any of those functions is missing, this module cannot run.
-        if (!core || (typeof core.memRead !== "function") || (typeof core.memWrite !== "function") ||
-            (typeof core.ioRead !== "function") || (typeof core.ioWrite !== "function"))
-            throw ("Z80: Core object is missing required functions.");
+        if (
+            !core ||
+            typeof core.memRead !== 'function' ||
+            typeof core.memWrite !== 'function' ||
+            typeof core.ioRead !== 'function' ||
+            typeof core.ioWrite !== 'function'
+        )
+            throw 'Z80: Core object is missing required functions.';
 
         // Obviously we'll be needing the core object's functions again.
         this.core = core;
-
 
         this.initializeInstructions();
         this.initializeEdInstructions();
@@ -142,7 +147,7 @@ export class Z80 {
         this.doDelayedEi = false;
         // Obviously we've not used any cycles yet.
         this.cycleCounter = 0;
-    };
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     /// @public runInstruction
@@ -159,12 +164,12 @@ export class Z80 {
             // If the previous instruction was a DI or an EI,
             //  we'll need to disable or enable interrupts
             //  after whatever instruction we're about to run is finished.
-            var doingDelayedDi = false, doingDelayedEi = false;
+            var doingDelayedDi = false,
+                doingDelayedEi = false;
             if (this.doDelayedDi) {
                 this.doDelayedDi = false;
                 doingDelayedDi = true;
-            }
-            else if (this.doDelayedEi) {
+            } else if (this.doDelayedEi) {
                 this.doDelayedEi = false;
                 doingDelayedEi = true;
             }
@@ -184,8 +189,7 @@ export class Z80 {
             if (doingDelayedDi) {
                 this.iff1 = 0;
                 this.iff2 = 0;
-            }
-            else if (doingDelayedEi) {
+            } else if (doingDelayedEi) {
                 this.iff1 = 1;
                 this.iff2 = 1;
             }
@@ -195,13 +199,12 @@ export class Z80 {
             var retval = this.cycleCounter;
             this.cycleCounter = 0;
             return retval;
-        }
-        else {
+        } else {
             // While we're halted, claim that we spent a cycle doing nothing,
             //  so that the rest of the emulator can still proceed.
             return 1;
         }
-    };
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     /// @public interrupt
@@ -226,8 +229,7 @@ export class Z80 {
             this.pc = 0x66;
             this.cycleCounter += 11;
             this.lastInstruction = InstructionType.INT;
-        }
-        else if (this.iff1) {
+        } else if (this.iff1) {
             // The high bit of R is not affected by this increment,
             //  it can only be changed using the LD R, A instruction.
             this.r = (this.r & 0x80) | (((this.r & 0x7f) + 1) & 0x7f);
@@ -241,30 +243,30 @@ export class Z80 {
                 //  decode the content of the data bus as an instruction and run it.
                 this.decodeInstruction(data);
                 this.cycleCounter += 2;
-            }
-            else if (this.imode === 1) {
+            } else if (this.imode === 1) {
                 // Mode 1 is always just RST 0x38.
                 this.pushWord(this.pc);
                 this.pc = 0x38;
                 this.lastInstruction = InstructionType.INT;
                 this.cycleCounter += 13;
-            }
-            else if (this.imode === 2) {
+            } else if (this.imode === 2) {
                 // Mode 2 uses the value on the data bus as in index
                 //  into the vector table pointer to by the I register.
                 this.pushWord(this.pc);
                 // The Z80 manual says that this address must be 2-byte aligned,
                 //  but it doesn't appear that this is actually the case on the hardware,
                 //  so we don't attempt to enforce that here.
-                var vectorAddress = ((this.i << 8) | data);
-                this.pc = this.core.read_mem_byte(vectorAddress) |
-                    (this.core.read_mem_byte((vectorAddress + 1) & 0xffff) << 8);
+                var vectorAddress = (this.i << 8) | data;
+                this.pc =
+                    this.core.read_mem_byte(vectorAddress) |
+                    (this.core.read_mem_byte((vectorAddress + 1) & 0xffff) <<
+                        8);
 
                 this.lastInstruction = InstructionType.INT;
                 this.cycleCounter += 19;
             }
         }
-    };
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     /// The private API functions end here.
@@ -277,13 +279,21 @@ export class Z80 {
         //  instead of going into the instruction array for them.
         // This function gets the operand for all of these instructions.
         var getOperand = function (opcode) {
-            return ((opcode & 0x07) === 0) ? this.b :
-                ((opcode & 0x07) === 1) ? this.c :
-                    ((opcode & 0x07) === 2) ? this.d :
-                        ((opcode & 0x07) === 3) ? this.e :
-                            ((opcode & 0x07) === 4) ? this.h :
-                                ((opcode & 0x07) === 5) ? this.l :
-                                    ((opcode & 0x07) === 6) ? this.core.memRead(this.l | (this.h << 8)) : this.a;
+            return (opcode & 0x07) === 0
+                ? this.b
+                : (opcode & 0x07) === 1
+                ? this.c
+                : (opcode & 0x07) === 2
+                ? this.d
+                : (opcode & 0x07) === 3
+                ? this.e
+                : (opcode & 0x07) === 4
+                ? this.h
+                : (opcode & 0x07) === 5
+                ? this.l
+                : (opcode & 0x07) === 6
+                ? this.core.memRead(this.l | (this.h << 8))
+                : this.a;
         };
 
         // Handle HALT right up front, because it fouls up our LD decoding
@@ -292,40 +302,38 @@ export class Z80 {
             this.halted = true;
             this.iff1 = 1;
             this.iff2 = 1;
-        }
-        else if ((opcode >= 0x40) && (opcode < 0x80)) {
+        } else if (opcode >= 0x40 && opcode < 0x80) {
             // This entire range is all 8-bit register loads.
             // Get the operand and assign it to the correct destination.
             var operand = getOperand.call(this, opcode);
 
-            if (((opcode & 0x38) >>> 3) === 0)
-                this.b = operand;
-            else if (((opcode & 0x38) >>> 3) === 1)
-                this.c = operand;
-            else if (((opcode & 0x38) >>> 3) === 2)
-                this.d = operand;
-            else if (((opcode & 0x38) >>> 3) === 3)
-                this.e = operand;
-            else if (((opcode & 0x38) >>> 3) === 4)
-                this.h = operand;
-            else if (((opcode & 0x38) >>> 3) === 5)
-                this.l = operand;
-            else if (((opcode & 0x38) >>> 3) === 6)
+            if ((opcode & 0x38) >>> 3 === 0) this.b = operand;
+            else if ((opcode & 0x38) >>> 3 === 1) this.c = operand;
+            else if ((opcode & 0x38) >>> 3 === 2) this.d = operand;
+            else if ((opcode & 0x38) >>> 3 === 3) this.e = operand;
+            else if ((opcode & 0x38) >>> 3 === 4) this.h = operand;
+            else if ((opcode & 0x38) >>> 3 === 5) this.l = operand;
+            else if ((opcode & 0x38) >>> 3 === 6)
                 this.core.memWrite(this.l | (this.h << 8), operand);
-            else if (((opcode & 0x38) >>> 3) === 7)
-                this.a = operand;
-        }
-        else if ((opcode >= 0x80) && (opcode < 0xc0)) {
+            else if ((opcode & 0x38) >>> 3 === 7) this.a = operand;
+        } else if (opcode >= 0x80 && opcode < 0xc0) {
             // These are the 8-bit register ALU instructions.
             // We'll get the operand and then use this "jump table"
             //  to call the correct utility function for the instruction.
             var operand = getOperand.call(this, opcode),
-                opArray = [this.doAdd, this.doAdc, this.doSub, this.doSbc,
-                this.doAnd, this.doXor, this.doOr, this.doCp];
+                opArray = [
+                    this.doAdd,
+                    this.doAdc,
+                    this.doSub,
+                    this.doSbc,
+                    this.doAnd,
+                    this.doXor,
+                    this.doOr,
+                    this.doCp,
+                ];
 
             opArray[(opcode & 0x38) >>> 3].call(this, operand);
-        }
-        else {
+        } else {
             // This is one of the less formulaic instructions;
             //  we'll get the specific function for it from our array.
             this.instructions[opcode]();
@@ -336,7 +344,7 @@ export class Z80 {
         // If this was a prefixed instruction, then
         //  the prefix handler has added its extra cycles already.
         this.cycleCounter += this.cycleCounts[opcode];
-    };
+    }
 
     private getSignedOffsetByte(value) {
         // This function requires some explanation.
@@ -360,33 +368,37 @@ export class Z80 {
             value = -((0xff & ~value) + 1);
         }
         return value;
-    };
+    }
 
     private getFlags() {
         // We need the whole F register for some reason.
         //  probably a PUSH AF instruction,
         //  so make the F register out of our separate flags.
-        return (this.flags.S << 7) |
+        return (
+            (this.flags.S << 7) |
             (this.flags.Z << 6) |
             (this.flags.Y << 5) |
             (this.flags.H << 4) |
             (this.flags.X << 3) |
             (this.flags.P << 2) |
             (this.flags.N << 1) |
-            (this.flags.C);
-    };
+            this.flags.C
+        );
+    }
 
     private getFlags_() {
         // This is the same as the above for the F' register.
-        return (this.flags_.S << 7) |
+        return (
+            (this.flags_.S << 7) |
             (this.flags_.Z << 6) |
             (this.flags_.Y << 5) |
             (this.flags_.H << 4) |
             (this.flags_.X << 3) |
             (this.flags_.P << 2) |
             (this.flags_.N << 1) |
-            (this.flags_.C);
-    };
+            this.flags_.C
+        );
+    }
 
     private setFlags(operand) {
         // We need to set the F register, probably for a POP AF,
@@ -398,8 +410,8 @@ export class Z80 {
         this.flags.X = (operand & 0x08) >>> 3;
         this.flags.P = (operand & 0x04) >>> 2;
         this.flags.N = (operand & 0x02) >>> 1;
-        this.flags.C = (operand & 0x01);
-    };
+        this.flags.C = operand & 0x01;
+    }
 
     private setFlags_(operand) {
         // Again, this is the same as the above for F'.
@@ -410,8 +422,8 @@ export class Z80 {
         this.flags_.X = (operand & 0x08) >>> 3;
         this.flags_.P = (operand & 0x04) >>> 2;
         this.flags_.N = (operand & 0x02) >>> 1;
-        this.flags_.C = (operand & 0x01);
-    };
+        this.flags_.C = operand & 0x01;
+    }
 
     private updateXyFlags(result) {
         // Most of the time, the undocumented flags
@@ -422,11 +434,12 @@ export class Z80 {
         // This is a utility function to set those flags based on those bits.
         this.flags.Y = (result & 0x20) >>> 5;
         this.flags.X = (result & 0x08) >>> 3;
-    };
+    }
 
     private getParity(value) {
         // We could try to actually calculate the parity every time,
         //  but why calculate what you can pre-calculate?
+        // prettier-ignore
         var parityBits = [
             1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
             0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
@@ -446,7 +459,7 @@ export class Z80 {
             1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
         ];
         return parityBits[value];
-    };
+    }
 
     public pushWord(operand) {
         // Pretty obvious what this function does; given a 16-bit value,
@@ -456,7 +469,7 @@ export class Z80 {
         this.core.memWrite(this.sp, (operand & 0xff00) >>> 8);
         this.sp = (this.sp - 1) & 0xffff;
         this.core.memWrite(this.sp, operand & 0x00ff);
-    };
+    }
 
     public popWord() {
         // Again, not complicated; read a byte off the top of the stack,
@@ -466,7 +479,7 @@ export class Z80 {
         retval |= this.core.memRead(this.sp) << 8;
         this.sp = (this.sp + 1) & 0xffff;
         return retval;
-    };
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     /// Now, the way most instructions work in this emulator is that they set up
@@ -482,15 +495,15 @@ export class Z80 {
             //  because the instruction decoder increments the PC
             //  unconditionally at the end of every instruction
             //  and we need to counteract that so we end up at the jump target.
-            this.pc = this.core.memRead((this.pc + 1) & 0xffff) |
+            this.pc =
+                this.core.memRead((this.pc + 1) & 0xffff) |
                 (this.core.memRead((this.pc + 2) & 0xffff) << 8);
             this.pc = (this.pc - 1) & 0xffff;
-        }
-        else {
+        } else {
             // We're not taking this jump, just move the PC past the operand.
             this.pc = (this.pc + 2) & 0xffff;
         }
-    };
+    }
 
     private doConditionalRelativeJump(condition) {
         // This function implements the JR [condition],n instructions.
@@ -498,15 +511,16 @@ export class Z80 {
             // We need a few more cycles to actually take the jump.
             this.cycleCounter += 5;
             // Calculate the offset specified by our operand.
-            var offset = this.getSignedOffsetByte(this.core.memRead((this.pc + 1) & 0xffff));
+            var offset = this.getSignedOffsetByte(
+                this.core.memRead((this.pc + 1) & 0xffff)
+            );
             // Add the offset to the PC, also skipping past this instruction.
             this.pc = (this.pc + offset + 1) & 0xffff;
-        }
-        else {
+        } else {
             // No jump happening, just skip the operand.
             this.pc = (this.pc + 1) & 0xffff;
         }
-    };
+    }
 
     private doConditionalCall(condition) {
         // This function is the CALL [condition],nn instructions.
@@ -514,15 +528,15 @@ export class Z80 {
         if (condition) {
             this.cycleCounter += 7;
             this.pushWord((this.pc + 3) & 0xffff);
-            this.pc = this.core.memRead((this.pc + 1) & 0xffff) |
+            this.pc =
+                this.core.memRead((this.pc + 1) & 0xffff) |
                 (this.core.memRead((this.pc + 2) & 0xffff) << 8);
             this.pc = (this.pc - 1) & 0xffff;
             this.lastInstruction = InstructionType.CALL;
-        }
-        else {
+        } else {
             this.pc = (this.pc + 2) & 0xffff;
         }
-    };
+    }
 
     private doConditionalReturn(condition) {
         if (condition) {
@@ -530,14 +544,14 @@ export class Z80 {
             this.pc = (this.popWord() - 1) & 0xffff;
             this.lastInstruction = InstructionType.RET;
         }
-    };
+    }
 
     private doRestart(address) {
         // The RST [address] instructions go through here.
         this.pushWord((this.pc + 1) & 0xffff);
         this.pc = (address - 1) & 0xffff;
         this.lastInstruction = InstructionType.RST;
-    };
+    }
 
     private doAdd(operand) {
         // This is the ADD A, [operand] instructions.
@@ -548,60 +562,78 @@ export class Z80 {
 
         // The great majority of the work for the arithmetic instructions
         //  turns out to be setting the flags rather than the actual operation.
-        this.flags.S = (result & 0x80) ? 1 : 0;
+        this.flags.S = result & 0x80 ? 1 : 0;
         this.flags.Z = !(result & 0xff) ? 1 : 0;
-        this.flags.H = (((operand & 0x0f) + (this.a & 0x0f)) & 0x10) ? 1 : 0;
+        this.flags.H = ((operand & 0x0f) + (this.a & 0x0f)) & 0x10 ? 1 : 0;
         // An overflow has happened if the sign bits of the accumulator and the operand
         //  don't match the sign bit of the result value.
-        this.flags.P = ((this.a & 0x80) === (operand & 0x80)) && ((this.a & 0x80) !== (result & 0x80)) ? 1 : 0;
+        this.flags.P =
+            (this.a & 0x80) === (operand & 0x80) &&
+            (this.a & 0x80) !== (result & 0x80)
+                ? 1
+                : 0;
         this.flags.N = 0;
-        this.flags.C = (result & 0x100) ? 1 : 0;
+        this.flags.C = result & 0x100 ? 1 : 0;
 
         this.a = result & 0xff;
         this.updateXyFlags(this.a);
-    };
+    }
 
     private doAdc(operand) {
         var result = this.a + operand + this.flags.C;
 
-        this.flags.S = (result & 0x80) ? 1 : 0;
+        this.flags.S = result & 0x80 ? 1 : 0;
         this.flags.Z = !(result & 0xff) ? 1 : 0;
-        this.flags.H = (((operand & 0x0f) + (this.a & 0x0f) + this.flags.C) & 0x10) ? 1 : 0;
-        this.flags.P = ((this.a & 0x80) === (operand & 0x80)) && ((this.a & 0x80) !== (result & 0x80)) ? 1 : 0;
+        this.flags.H =
+            ((operand & 0x0f) + (this.a & 0x0f) + this.flags.C) & 0x10 ? 1 : 0;
+        this.flags.P =
+            (this.a & 0x80) === (operand & 0x80) &&
+            (this.a & 0x80) !== (result & 0x80)
+                ? 1
+                : 0;
         this.flags.N = 0;
-        this.flags.C = (result & 0x100) ? 1 : 0;
+        this.flags.C = result & 0x100 ? 1 : 0;
 
         this.a = result & 0xff;
         this.updateXyFlags(this.a);
-    };
+    }
 
     private doSub(operand) {
         var result = this.a - operand;
 
-        this.flags.S = (result & 0x80) ? 1 : 0;
+        this.flags.S = result & 0x80 ? 1 : 0;
         this.flags.Z = !(result & 0xff) ? 1 : 0;
-        this.flags.H = (((this.a & 0x0f) - (operand & 0x0f)) & 0x10) ? 1 : 0;
-        this.flags.P = ((this.a & 0x80) !== (operand & 0x80)) && ((this.a & 0x80) !== (result & 0x80)) ? 1 : 0;
+        this.flags.H = ((this.a & 0x0f) - (operand & 0x0f)) & 0x10 ? 1 : 0;
+        this.flags.P =
+            (this.a & 0x80) !== (operand & 0x80) &&
+            (this.a & 0x80) !== (result & 0x80)
+                ? 1
+                : 0;
         this.flags.N = 1;
-        this.flags.C = (result & 0x100) ? 1 : 0;
+        this.flags.C = result & 0x100 ? 1 : 0;
 
         this.a = result & 0xff;
         this.updateXyFlags(this.a);
-    };
+    }
 
     private doSbc(operand) {
         var result = this.a - operand - this.flags.C;
 
-        this.flags.S = (result & 0x80) ? 1 : 0;
+        this.flags.S = result & 0x80 ? 1 : 0;
         this.flags.Z = !(result & 0xff) ? 1 : 0;
-        this.flags.H = (((this.a & 0x0f) - (operand & 0x0f) - this.flags.C) & 0x10) ? 1 : 0;
-        this.flags.P = ((this.a & 0x80) !== (operand & 0x80)) && ((this.a & 0x80) !== (result & 0x80)) ? 1 : 0;
+        this.flags.H =
+            ((this.a & 0x0f) - (operand & 0x0f) - this.flags.C) & 0x10 ? 1 : 0;
+        this.flags.P =
+            (this.a & 0x80) !== (operand & 0x80) &&
+            (this.a & 0x80) !== (result & 0x80)
+                ? 1
+                : 0;
         this.flags.N = 1;
-        this.flags.C = (result & 0x100) ? 1 : 0;
+        this.flags.C = result & 0x100 ? 1 : 0;
 
         this.a = result & 0xff;
         this.updateXyFlags(this.a);
-    };
+    }
 
     private doCp(operand) {
         // A compare instruction is just a subtraction that doesn't save the value,
@@ -612,126 +644,137 @@ export class Z80 {
         // Since this instruction has no "result" value, the undocumented flags
         //  are set based on the operand instead.
         this.updateXyFlags(operand);
-    };
+    }
 
     private doAnd(operand) {
         // The logic instructions are all pretty straightforward.
         this.a &= operand & 0xff;
-        this.flags.S = (this.a & 0x80) ? 1 : 0;
+        this.flags.S = this.a & 0x80 ? 1 : 0;
         this.flags.Z = !this.a ? 1 : 0;
         this.flags.H = 1;
         this.flags.P = this.getParity(this.a);
         this.flags.N = 0;
         this.flags.C = 0;
         this.updateXyFlags(this.a);
-    };
+    }
 
     private doOr(operand) {
         this.a = (operand | this.a) & 0xff;
-        this.flags.S = (this.a & 0x80) ? 1 : 0;
+        this.flags.S = this.a & 0x80 ? 1 : 0;
         this.flags.Z = !this.a ? 1 : 0;
         this.flags.H = 0;
         this.flags.P = this.getParity(this.a);
         this.flags.N = 0;
         this.flags.C = 0;
         this.updateXyFlags(this.a);
-    };
+    }
 
     private doXor(operand) {
         this.a = (operand ^ this.a) & 0xff;
-        this.flags.S = (this.a & 0x80) ? 1 : 0;
+        this.flags.S = this.a & 0x80 ? 1 : 0;
         this.flags.Z = !this.a ? 1 : 0;
         this.flags.H = 0;
         this.flags.P = this.getParity(this.a);
         this.flags.N = 0;
         this.flags.C = 0;
         this.updateXyFlags(this.a);
-    };
+    }
 
     private doInc(operand) {
         var result = operand + 1;
 
-        this.flags.S = (result & 0x80) ? 1 : 0;
+        this.flags.S = result & 0x80 ? 1 : 0;
         this.flags.Z = !(result & 0xff) ? 1 : 0;
-        this.flags.H = ((operand & 0x0f) === 0x0f) ? 1 : 0;
+        this.flags.H = (operand & 0x0f) === 0x0f ? 1 : 0;
         // It's a good deal easier to detect overflow for an increment/decrement.
-        this.flags.P = (operand === 0x7f) ? 1 : 0;
+        this.flags.P = operand === 0x7f ? 1 : 0;
         this.flags.N = 0;
 
         result &= 0xff;
         this.updateXyFlags(result);
 
         return result;
-    };
+    }
 
     private doDec(operand) {
         var result = operand - 1;
 
-        this.flags.S = (result & 0x80) ? 1 : 0;
+        this.flags.S = result & 0x80 ? 1 : 0;
         this.flags.Z = !(result & 0xff) ? 1 : 0;
-        this.flags.H = ((operand & 0x0f) === 0x00) ? 1 : 0;
-        this.flags.P = (operand === 0x80) ? 1 : 0;
+        this.flags.H = (operand & 0x0f) === 0x00 ? 1 : 0;
+        this.flags.P = operand === 0x80 ? 1 : 0;
         this.flags.N = 1;
 
         result &= 0xff;
         this.updateXyFlags(result);
 
         return result;
-    };
+    }
 
     private doHlAdd(operand) {
         // The HL arithmetic instructions are the same as the A ones,
         //  just with twice as many bits happening.
-        var hl = this.l | (this.h << 8), result = hl + operand;
+        var hl = this.l | (this.h << 8),
+            result = hl + operand;
 
         this.flags.N = 0;
-        this.flags.C = (result & 0x10000) ? 1 : 0;
-        this.flags.H = (((hl & 0x0fff) + (operand & 0x0fff)) & 0x1000) ? 1 : 0;
+        this.flags.C = result & 0x10000 ? 1 : 0;
+        this.flags.H = ((hl & 0x0fff) + (operand & 0x0fff)) & 0x1000 ? 1 : 0;
 
         this.l = result & 0xff;
         this.h = (result & 0xff00) >>> 8;
 
         this.updateXyFlags(this.h);
-    };
+    }
 
     private doHlAdc(operand) {
         operand += this.flags.C;
-        var hl = this.l | (this.h << 8), result = hl + operand;
+        var hl = this.l | (this.h << 8),
+            result = hl + operand;
 
-        this.flags.S = (result & 0x8000) ? 1 : 0;
+        this.flags.S = result & 0x8000 ? 1 : 0;
         this.flags.Z = !(result & 0xffff) ? 1 : 0;
-        this.flags.H = (((hl & 0x0fff) + (operand & 0x0fff)) & 0x1000) ? 1 : 0;
-        this.flags.P = ((hl & 0x8000) === (operand & 0x8000)) && ((result & 0x8000) !== (hl & 0x8000)) ? 1 : 0;
+        this.flags.H = ((hl & 0x0fff) + (operand & 0x0fff)) & 0x1000 ? 1 : 0;
+        this.flags.P =
+            (hl & 0x8000) === (operand & 0x8000) &&
+            (result & 0x8000) !== (hl & 0x8000)
+                ? 1
+                : 0;
         this.flags.N = 0;
-        this.flags.C = (result & 0x10000) ? 1 : 0;
+        this.flags.C = result & 0x10000 ? 1 : 0;
 
         this.l = result & 0xff;
         this.h = (result >>> 8) & 0xff;
 
         this.updateXyFlags(this.h);
-    };
+    }
 
     private doHlSbc(operand) {
         operand += this.flags.C;
-        var hl = this.l | (this.h << 8), result = hl - operand;
+        var hl = this.l | (this.h << 8),
+            result = hl - operand;
 
-        this.flags.S = (result & 0x8000) ? 1 : 0;
+        this.flags.S = result & 0x8000 ? 1 : 0;
         this.flags.Z = !(result & 0xffff) ? 1 : 0;
-        this.flags.H = (((hl & 0x0fff) - (operand & 0x0fff)) & 0x1000) ? 1 : 0;
-        this.flags.P = ((hl & 0x8000) !== (operand & 0x8000)) && ((result & 0x8000) !== (hl & 0x8000)) ? 1 : 0;
+        this.flags.H = ((hl & 0x0fff) - (operand & 0x0fff)) & 0x1000 ? 1 : 0;
+        this.flags.P =
+            (hl & 0x8000) !== (operand & 0x8000) &&
+            (result & 0x8000) !== (hl & 0x8000)
+                ? 1
+                : 0;
         this.flags.N = 1;
-        this.flags.C = (result & 0x10000) ? 1 : 0;
+        this.flags.C = result & 0x10000 ? 1 : 0;
 
         this.l = result & 0xff;
         this.h = (result >>> 8) & 0xff;
 
         this.updateXyFlags(this.h);
-    };
+    }
 
     private doIn(port) {
         var result = this.core.ioRead(port);
 
-        this.flags.S = (result & 0x80) ? 1 : 0;
+        this.flags.S = result & 0x80 ? 1 : 0;
         this.flags.Z = result ? 0 : 1;
         this.flags.H = 0;
         this.flags.P = this.getParity(result) ? 1 : 0;
@@ -739,7 +782,7 @@ export class Z80 {
         this.updateXyFlags(result);
 
         return result;
-    };
+    }
 
     private doNeg() {
         // This instruction is defined to not alter the register if it === 0x80.
@@ -747,17 +790,17 @@ export class Z80 {
             // This is a signed operation, so convert A to a signed value.
             this.a = this.getSignedOffsetByte(this.a);
 
-            this.a = (-this.a) & 0xff;
+            this.a = -this.a & 0xff;
         }
 
-        this.flags.S = (this.a & 0x80) ? 1 : 0;
+        this.flags.S = this.a & 0x80 ? 1 : 0;
         this.flags.Z = !this.a ? 1 : 0;
-        this.flags.H = (((-this.a) & 0x0f) > 0) ? 1 : 0;
-        this.flags.P = (this.a === 0x80) ? 1 : 0;
+        this.flags.H = (-this.a & 0x0f) > 0 ? 1 : 0;
+        this.flags.P = this.a === 0x80 ? 1 : 0;
         this.flags.N = 1;
         this.flags.C = this.a ? 1 : 0;
         this.updateXyFlags(this.a);
-    };
+    }
 
     private doLdi() {
         // Copy the value that we're supposed to copy.
@@ -776,15 +819,15 @@ export class Z80 {
         this.b = (result & 0xff00) >>> 8;
 
         this.flags.H = 0;
-        this.flags.P = (this.c || this.b) ? 1 : 0;
+        this.flags.P = this.c || this.b ? 1 : 0;
         this.flags.N = 0;
         this.flags.Y = ((this.a + readValue) & 0x02) >>> 1;
         this.flags.X = ((this.a + readValue) & 0x08) >>> 3;
-    };
+    }
 
     private doCpi() {
         var tempCarry = this.flags.C;
-        var readValue = this.core.memRead(this.l | (this.h << 8))
+        var readValue = this.core.memRead(this.l | (this.h << 8));
         this.doCp(readValue);
         this.flags.C = tempCarry;
         this.flags.Y = ((this.a - readValue - this.flags.H) & 0x02) >>> 1;
@@ -798,22 +841,28 @@ export class Z80 {
         this.b = (result & 0xff00) >>> 8;
 
         this.flags.P = result ? 1 : 0;
-    };
+    }
 
     private doIni() {
         this.b = this.doDec(this.b);
 
-        this.core.memWrite(this.l | (this.h << 8), this.core.ioRead((this.b << 8) | this.c));
+        this.core.memWrite(
+            this.l | (this.h << 8),
+            this.core.ioRead((this.b << 8) | this.c)
+        );
 
         var result = (this.l | (this.h << 8)) + 1;
         this.l = result & 0xff;
         this.h = (result & 0xff00) >>> 8;
 
         this.flags.N = 1;
-    };
+    }
 
     private doOuti() {
-        this.core.ioWrite((this.b << 8) | this.c, this.core.memRead(this.l | (this.h << 8)));
+        this.core.ioWrite(
+            (this.b << 8) | this.c,
+            this.core.memRead(this.l | (this.h << 8))
+        );
 
         var result = (this.l | (this.h << 8)) + 1;
         this.l = result & 0xff;
@@ -821,7 +870,7 @@ export class Z80 {
 
         this.b = this.doDec(this.b);
         this.flags.N = 1;
-    };
+    }
 
     private doLdd() {
         this.flags.N = 0;
@@ -840,14 +889,14 @@ export class Z80 {
         this.c = result & 0xff;
         this.b = (result & 0xff00) >>> 8;
 
-        this.flags.P = (this.c || this.b) ? 1 : 0;
+        this.flags.P = this.c || this.b ? 1 : 0;
         this.flags.Y = ((this.a + readValue) & 0x02) >>> 1;
         this.flags.X = ((this.a + readValue) & 0x08) >>> 3;
-    };
+    }
 
     private doCpd() {
-        var tempCarry = this.flags.C
-        var readValue = this.core.memRead(this.l | (this.h << 8))
+        var tempCarry = this.flags.C;
+        var readValue = this.core.memRead(this.l | (this.h << 8));
         this.doCp(readValue);
         this.flags.C = tempCarry;
         this.flags.Y = ((this.a - readValue - this.flags.H) & 0x02) >>> 1;
@@ -861,22 +910,28 @@ export class Z80 {
         this.b = (result & 0xff00) >>> 8;
 
         this.flags.P = result ? 1 : 0;
-    };
+    }
 
     private doInd() {
         this.b = this.doDec(this.b);
 
-        this.core.memWrite(this.l | (this.h << 8), this.core.ioRead((this.b << 8) | this.c));
+        this.core.memWrite(
+            this.l | (this.h << 8),
+            this.core.ioRead((this.b << 8) | this.c)
+        );
 
         var result = (this.l | (this.h << 8)) - 1;
         this.l = result & 0xff;
         this.h = (result & 0xff00) >>> 8;
 
         this.flags.N = 1;
-    };
+    }
 
     private doOutd() {
-        this.core.ioWrite((this.b << 8) | this.c, this.core.memRead(this.l | (this.h << 8)));
+        this.core.ioWrite(
+            (this.b << 8) | this.c,
+            this.core.memRead(this.l | (this.h << 8))
+        );
 
         var result = (this.l | (this.h << 8)) - 1;
         this.l = result & 0xff;
@@ -884,7 +939,7 @@ export class Z80 {
 
         this.b = this.doDec(this.b);
         this.flags.N = 1;
-    };
+    }
 
     private doRlc(operand) {
         this.flags.N = 0;
@@ -895,11 +950,11 @@ export class Z80 {
 
         this.flags.Z = !operand ? 1 : 0;
         this.flags.P = this.getParity(operand);
-        this.flags.S = (operand & 0x80) ? 1 : 0;
+        this.flags.S = operand & 0x80 ? 1 : 0;
         this.updateXyFlags(operand);
 
         return operand;
-    };
+    }
 
     private doRrc(operand) {
         this.flags.N = 0;
@@ -910,11 +965,11 @@ export class Z80 {
 
         this.flags.Z = !(operand & 0xff) ? 1 : 0;
         this.flags.P = this.getParity(operand);
-        this.flags.S = (operand & 0x80) ? 1 : 0;
+        this.flags.S = operand & 0x80 ? 1 : 0;
         this.updateXyFlags(operand);
 
         return operand & 0xff;
-    };
+    }
 
     private doRl(operand) {
         this.flags.N = 0;
@@ -926,11 +981,11 @@ export class Z80 {
 
         this.flags.Z = !operand ? 1 : 0;
         this.flags.P = this.getParity(operand);
-        this.flags.S = (operand & 0x80) ? 1 : 0;
+        this.flags.S = operand & 0x80 ? 1 : 0;
         this.updateXyFlags(operand);
 
         return operand;
-    };
+    }
 
     private doRr(operand) {
         this.flags.N = 0;
@@ -942,11 +997,11 @@ export class Z80 {
 
         this.flags.Z = !operand ? 1 : 0;
         this.flags.P = this.getParity(operand);
-        this.flags.S = (operand & 0x80) ? 1 : 0;
+        this.flags.S = operand & 0x80 ? 1 : 0;
         this.updateXyFlags(operand);
 
         return operand;
-    };
+    }
 
     private doSla(operand) {
         this.flags.N = 0;
@@ -957,11 +1012,11 @@ export class Z80 {
 
         this.flags.Z = !operand ? 1 : 0;
         this.flags.P = this.getParity(operand);
-        this.flags.S = (operand & 0x80) ? 1 : 0;
+        this.flags.S = operand & 0x80 ? 1 : 0;
         this.updateXyFlags(operand);
 
         return operand;
-    };
+    }
 
     private doSra(operand) {
         this.flags.N = 0;
@@ -972,11 +1027,11 @@ export class Z80 {
 
         this.flags.Z = !operand ? 1 : 0;
         this.flags.P = this.getParity(operand);
-        this.flags.S = (operand & 0x80) ? 1 : 0;
+        this.flags.S = operand & 0x80 ? 1 : 0;
         this.updateXyFlags(operand);
 
         return operand;
-    };
+    }
 
     private doSll(operand) {
         this.flags.N = 0;
@@ -987,11 +1042,11 @@ export class Z80 {
 
         this.flags.Z = !operand ? 1 : 0;
         this.flags.P = this.getParity(operand);
-        this.flags.S = (operand & 0x80) ? 1 : 0;
+        this.flags.S = operand & 0x80 ? 1 : 0;
         this.updateXyFlags(operand);
 
         return operand;
-    };
+    }
 
     private doSrl(operand) {
         this.flags.N = 0;
@@ -1006,20 +1061,19 @@ export class Z80 {
         this.updateXyFlags(operand);
 
         return operand;
-    };
+    }
 
     private doIxAdd(operand) {
         this.flags.N = 0;
 
         var result = this.ix + operand;
 
-        this.flags.C = (result & 0x10000) ? 1 : 0;
-        this.flags.H = (((this.ix & 0xfff) + (operand & 0xfff)) & 0x1000) ? 1 : 0;
+        this.flags.C = result & 0x10000 ? 1 : 0;
+        this.flags.H = ((this.ix & 0xfff) + (operand & 0xfff)) & 0x1000 ? 1 : 0;
         this.updateXyFlags((result & 0xff00) >>> 8);
 
         this.ix = result;
-    };
-
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     /// This table contains the implementations for the instructions that weren't
@@ -1031,7 +1085,7 @@ export class Z80 {
 
     private initializeInstructions() {
         // 0x00 : NOP
-        this.instructions[0x00] = () => { };
+        this.instructions[0x00] = () => {};
         // 0x01 : LD BC, nn
         this.instructions[0x01] = () => {
             this.pc = (this.pc + 1) & 0xffff;
@@ -1045,7 +1099,7 @@ export class Z80 {
         };
         // 0x03 : INC BC
         this.instructions[0x03] = () => {
-            var result = (this.c | (this.b << 8));
+            var result = this.c | (this.b << 8);
             result += 1;
             this.c = result & 0xff;
             this.b = (result & 0xff00) >>> 8;
@@ -1069,7 +1123,9 @@ export class Z80 {
             //  more general Z80-specific RLC instruction.
             // Specifially, RLCA is a version of RLC A that affects fewer flags.
             // The same applies to RRCA, RLA, and RRA.
-            var tempS = this.flags.S, tempZ = this.flags.Z, tempP = this.flags.P;
+            var tempS = this.flags.S,
+                tempZ = this.flags.Z,
+                tempP = this.flags.P;
             this.a = this.doRlc(this.a);
             this.flags.S = tempS;
             this.flags.Z = tempZ;
@@ -1095,7 +1151,7 @@ export class Z80 {
         };
         // 0x0b : DEC BC
         this.instructions[0x0b] = () => {
-            var result = (this.c | (this.b << 8));
+            var result = this.c | (this.b << 8);
             result -= 1;
             this.c = result & 0xff;
             this.b = (result & 0xff00) >>> 8;
@@ -1115,7 +1171,9 @@ export class Z80 {
         };
         // 0x0f : RRCA
         this.instructions[0x0f] = () => {
-            var tempS = this.flags.S, tempZ = this.flags.Z, tempP = this.flags.P;
+            var tempS = this.flags.S,
+                tempZ = this.flags.Z,
+                tempP = this.flags.P;
             this.a = this.doRrc(this.a);
             this.flags.S = tempS;
             this.flags.Z = tempZ;
@@ -1139,7 +1197,7 @@ export class Z80 {
         };
         // 0x13 : INC DE
         this.instructions[0x13] = () => {
-            var result = (this.e | (this.d << 8));
+            var result = this.e | (this.d << 8);
             result += 1;
             this.e = result & 0xff;
             this.d = (result & 0xff00) >>> 8;
@@ -1159,7 +1217,9 @@ export class Z80 {
         };
         // 0x17 : RLA
         this.instructions[0x17] = () => {
-            var tempS = this.flags.S, tempZ = this.flags.Z, tempP = this.flags.P;
+            var tempS = this.flags.S,
+                tempZ = this.flags.Z,
+                tempP = this.flags.P;
             this.a = this.doRl(this.a);
             this.flags.S = tempS;
             this.flags.Z = tempZ;
@@ -1167,7 +1227,9 @@ export class Z80 {
         };
         // 0x18 : JR n
         this.instructions[0x18] = () => {
-            var offset = this.getSignedOffsetByte(this.core.memRead((this.pc + 1) & 0xffff));
+            var offset = this.getSignedOffsetByte(
+                this.core.memRead((this.pc + 1) & 0xffff)
+            );
             this.pc = (this.pc + offset + 1) & 0xffff;
         };
         // 0x19 : ADD HL, DE
@@ -1180,7 +1242,7 @@ export class Z80 {
         };
         // 0x1b : DEC DE
         this.instructions[0x1b] = () => {
-            var result = (this.e | (this.d << 8));
+            var result = this.e | (this.d << 8);
             result -= 1;
             this.e = result & 0xff;
             this.d = (result & 0xff00) >>> 8;
@@ -1200,7 +1262,9 @@ export class Z80 {
         };
         // 0x1f : RRA
         this.instructions[0x1f] = () => {
-            var tempS = this.flags.S, tempZ = this.flags.Z, tempP = this.flags.P;
+            var tempS = this.flags.S,
+                tempZ = this.flags.Z,
+                tempP = this.flags.P;
             this.a = this.doRr(this.a);
             this.flags.S = tempS;
             this.flags.Z = tempZ;
@@ -1229,7 +1293,7 @@ export class Z80 {
         };
         // 0x23 : INC HL
         this.instructions[0x23] = () => {
-            var result = (this.l | (this.h << 8));
+            var result = this.l | (this.h << 8);
             result += 1;
             this.l = result & 0xff;
             this.h = (result & 0xff00) >>> 8;
@@ -1251,27 +1315,22 @@ export class Z80 {
         this.instructions[0x27] = () => {
             var temp = this.a;
             if (!this.flags.N) {
-                if (this.flags.H || ((this.a & 0x0f) > 9))
-                    temp += 0x06;
-                if (this.flags.C || (this.a > 0x99))
-                    temp += 0x60;
-            }
-            else {
-                if (this.flags.H || ((this.a & 0x0f) > 9))
-                    temp -= 0x06;
-                if (this.flags.C || (this.a > 0x99))
-                    temp -= 0x60;
+                if (this.flags.H || (this.a & 0x0f) > 9) temp += 0x06;
+                if (this.flags.C || this.a > 0x99) temp += 0x60;
+            } else {
+                if (this.flags.H || (this.a & 0x0f) > 9) temp -= 0x06;
+                if (this.flags.C || this.a > 0x99) temp -= 0x60;
             }
 
-            this.flags.S = (temp & 0x80) ? 1 : 0;
+            this.flags.S = temp & 0x80 ? 1 : 0;
             this.flags.Z = !(temp & 0xff) ? 1 : 0;
-            this.flags.H = ((this.a & 0x10) ^ (temp & 0x10)) ? 1 : 0;
+            this.flags.H = (this.a & 0x10) ^ (temp & 0x10) ? 1 : 0;
             this.flags.P = this.getParity(temp & 0xff);
             // DAA never clears the carry flag if it was already set,
             //  but it is able to set the carry flag if it was clear.
             // Don't ask me, I don't know.
             // Note also that we check for a BCD carry, instead of the usual.
-            this.flags.C = (this.flags.C || (this.a > 0x99)) ? 1 : 0;
+            this.flags.C = this.flags.C || this.a > 0x99 ? 1 : 0;
 
             this.a = temp & 0xff;
 
@@ -1297,7 +1356,7 @@ export class Z80 {
         };
         // 0x2b : DEC HL
         this.instructions[0x2b] = () => {
-            var result = (this.l | (this.h << 8));
+            var result = this.l | (this.h << 8);
             result -= 1;
             this.l = result & 0xff;
             this.h = (result & 0xff00) >>> 8;
@@ -1317,7 +1376,7 @@ export class Z80 {
         };
         // 0x2f : CPL
         this.instructions[0x2f] = () => {
-            this.a = (~this.a) & 0xff;
+            this.a = ~this.a & 0xff;
             this.flags.N = 1;
             this.flags.H = 1;
             this.updateXyFlags(this.a);
@@ -1328,7 +1387,8 @@ export class Z80 {
         };
         // 0x31 : LD SP, nn
         this.instructions[0x31] = () => {
-            this.sp = this.core.memRead((this.pc + 1) & 0xffff) |
+            this.sp =
+                this.core.memRead((this.pc + 1) & 0xffff) |
                 (this.core.memRead((this.pc + 2) & 0xffff) << 8);
             this.pc = (this.pc + 2) & 0xffff;
         };
@@ -1358,7 +1418,10 @@ export class Z80 {
         // 0x36 : LD (HL), n
         this.instructions[0x36] = () => {
             this.pc = (this.pc + 1) & 0xffff;
-            this.core.memWrite(this.l | (this.h << 8), this.core.memRead(this.pc));
+            this.core.memWrite(
+                this.l | (this.h << 8),
+                this.core.memRead(this.pc)
+            );
         };
         // 0x37 : SCF
         this.instructions[0x37] = () => {
@@ -1424,7 +1487,8 @@ export class Z80 {
         };
         // 0xc3 : JP nn
         this.instructions[0xc3] = () => {
-            this.pc = this.core.memRead((this.pc + 1) & 0xffff) |
+            this.pc =
+                this.core.memRead((this.pc + 1) & 0xffff) |
                 (this.core.memRead((this.pc + 2) & 0xffff) << 8);
             this.pc = (this.pc - 1) & 0xffff;
         };
@@ -1475,8 +1539,16 @@ export class Z80 {
 
             if (opcode < 0x40) {
                 // Shift/rotate instructions
-                var opArray = [this.doRlc, this.doRrc, this.doRl, this.doRr,
-                this.doSla, this.doSra, this.doSll, this.doSrl];
+                var opArray = [
+                    this.doRlc,
+                    this.doRrc,
+                    this.doRl,
+                    this.doRr,
+                    this.doSla,
+                    this.doSra,
+                    this.doSll,
+                    this.doSrl,
+                ];
 
                 if (regCode === 0)
                     this.b = opArray[bitNumber].call(this, this.b);
@@ -1491,12 +1563,16 @@ export class Z80 {
                 else if (regCode === 5)
                     this.l = opArray[bitNumber].call(this, this.l);
                 else if (regCode === 6)
-                    this.core.memWrite(this.l | (this.h << 8),
-                        opArray[bitNumber].call(this, this.core.memRead(this.l | (this.h << 8))));
+                    this.core.memWrite(
+                        this.l | (this.h << 8),
+                        opArray[bitNumber].call(
+                            this,
+                            this.core.memRead(this.l | (this.h << 8))
+                        )
+                    );
                 else if (regCode === 7)
                     this.a = opArray[bitNumber].call(this, this.a);
-            }
-            else if (opcode < 0x80) {
+            } else if (opcode < 0x80) {
                 // BIT instructions
                 if (regCode === 0)
                     this.flags.Z = !(this.b & (1 << bitNumber)) ? 1 : 0;
@@ -1511,62 +1587,57 @@ export class Z80 {
                 else if (regCode === 5)
                     this.flags.Z = !(this.l & (1 << bitNumber)) ? 1 : 0;
                 else if (regCode === 6)
-                    this.flags.Z = !((this.core.memRead(this.l | (this.h << 8))) & (1 << bitNumber)) ? 1 : 0;
+                    this.flags.Z = !(
+                        this.core.memRead(this.l | (this.h << 8)) &
+                        (1 << bitNumber)
+                    )
+                        ? 1
+                        : 0;
                 else if (regCode === 7)
                     this.flags.Z = !(this.a & (1 << bitNumber)) ? 1 : 0;
 
                 this.flags.N = 0;
                 this.flags.H = 1;
                 this.flags.P = this.flags.Z;
-                this.flags.S = ((bitNumber === 7) && !this.flags.Z) ? 1 : 0;
+                this.flags.S = bitNumber === 7 && !this.flags.Z ? 1 : 0;
                 // For the BIT n, (HL) instruction, the X and Y flags are obtained
                 //  from what is apparently an internal temporary register used for
                 //  some of the 16-bit arithmetic instructions.
                 // I haven't implemented that register here,
                 //  so for now we'll set X and Y the same way for every BIT opcode,
                 //  which means that they will usually be wrong for BIT n, (HL).
-                this.flags.Y = ((bitNumber === 5) && !this.flags.Z) ? 1 : 0;
-                this.flags.X = ((bitNumber === 3) && !this.flags.Z) ? 1 : 0;
-            }
-            else if (opcode < 0xc0) {
+                this.flags.Y = bitNumber === 5 && !this.flags.Z ? 1 : 0;
+                this.flags.X = bitNumber === 3 && !this.flags.Z ? 1 : 0;
+            } else if (opcode < 0xc0) {
                 // RES instructions
-                if (regCode === 0)
-                    this.b &= (0xff & ~(1 << bitNumber));
-                else if (regCode === 1)
-                    this.c &= (0xff & ~(1 << bitNumber));
-                else if (regCode === 2)
-                    this.d &= (0xff & ~(1 << bitNumber));
-                else if (regCode === 3)
-                    this.e &= (0xff & ~(1 << bitNumber));
-                else if (regCode === 4)
-                    this.h &= (0xff & ~(1 << bitNumber));
-                else if (regCode === 5)
-                    this.l &= (0xff & ~(1 << bitNumber));
+                if (regCode === 0) this.b &= 0xff & ~(1 << bitNumber);
+                else if (regCode === 1) this.c &= 0xff & ~(1 << bitNumber);
+                else if (regCode === 2) this.d &= 0xff & ~(1 << bitNumber);
+                else if (regCode === 3) this.e &= 0xff & ~(1 << bitNumber);
+                else if (regCode === 4) this.h &= 0xff & ~(1 << bitNumber);
+                else if (regCode === 5) this.l &= 0xff & ~(1 << bitNumber);
                 else if (regCode === 6)
-                    this.core.memWrite(this.l | (this.h << 8),
-                        this.core.memRead(this.l | (this.h << 8)) & ~(1 << bitNumber));
-                else if (regCode === 7)
-                    this.a &= (0xff & ~(1 << bitNumber));
-            }
-            else {
+                    this.core.memWrite(
+                        this.l | (this.h << 8),
+                        this.core.memRead(this.l | (this.h << 8)) &
+                            ~(1 << bitNumber)
+                    );
+                else if (regCode === 7) this.a &= 0xff & ~(1 << bitNumber);
+            } else {
                 // SET instructions
-                if (regCode === 0)
-                    this.b |= (1 << bitNumber);
-                else if (regCode === 1)
-                    this.c |= (1 << bitNumber);
-                else if (regCode === 2)
-                    this.d |= (1 << bitNumber);
-                else if (regCode === 3)
-                    this.e |= (1 << bitNumber);
-                else if (regCode === 4)
-                    this.h |= (1 << bitNumber);
-                else if (regCode === 5)
-                    this.l |= (1 << bitNumber);
+                if (regCode === 0) this.b |= 1 << bitNumber;
+                else if (regCode === 1) this.c |= 1 << bitNumber;
+                else if (regCode === 2) this.d |= 1 << bitNumber;
+                else if (regCode === 3) this.e |= 1 << bitNumber;
+                else if (regCode === 4) this.h |= 1 << bitNumber;
+                else if (regCode === 5) this.l |= 1 << bitNumber;
                 else if (regCode === 6)
-                    this.core.memWrite(this.l | (this.h << 8),
-                        this.core.memRead(this.l | (this.h << 8)) | (1 << bitNumber));
-                else if (regCode === 7)
-                    this.a |= (1 << bitNumber);
+                    this.core.memWrite(
+                        this.l | (this.h << 8),
+                        this.core.memRead(this.l | (this.h << 8)) |
+                            (1 << bitNumber)
+                    );
+                else if (regCode === 7) this.a |= 1 << bitNumber;
             }
 
             this.cycleCounter += this.cycleCountsCb[opcode];
@@ -1578,7 +1649,8 @@ export class Z80 {
         // 0xcd : CALL nn
         this.instructions[0xcd] = () => {
             this.pushWord((this.pc + 3) & 0xffff);
-            this.pc = this.core.memRead((this.pc + 1) & 0xffff) |
+            this.pc =
+                this.core.memRead((this.pc + 1) & 0xffff) |
                 (this.core.memRead((this.pc + 2) & 0xffff) << 8);
             this.pc = (this.pc - 1) & 0xffff;
             this.lastInstruction = InstructionType.CALL;
@@ -1609,7 +1681,10 @@ export class Z80 {
         // 0xd3 : OUT (n), A
         this.instructions[0xd3] = () => {
             this.pc = (this.pc + 1) & 0xffff;
-            this.core.ioWrite((this.a << 8) | this.core.memRead(this.pc), this.a);
+            this.core.ioWrite(
+                (this.a << 8) | this.core.memRead(this.pc),
+                this.a
+            );
         };
         // 0xd4 : CALL NC, nn
         this.instructions[0xd4] = () => {
@@ -1660,7 +1735,9 @@ export class Z80 {
         // 0xdb : IN A, (n)
         this.instructions[0xdb] = () => {
             this.pc = (this.pc + 1) & 0xffff;
-            this.a = this.core.ioRead((this.a << 8) | this.core.memRead(this.pc));
+            this.a = this.core.ioRead(
+                (this.a << 8) | this.core.memRead(this.pc)
+            );
         };
         // 0xdc : CALL C, nn
         this.instructions[0xdc] = () => {
@@ -1681,11 +1758,10 @@ export class Z80 {
             if (func) {
                 func();
                 this.cycleCounter += this.cycleCountsDd[opcode];
-            }
-            else {
+            } else {
                 // Apparently if a DD opcode doesn't exist,
                 //  it gets treated as an unprefixed opcode.
-                // What we'll do to handle that is just back up the 
+                // What we'll do to handle that is just back up the
                 //  program counter, so that this byte gets decoded
                 //  as a normal instruction.
                 this.pc = (this.pc - 1) & 0xffff;
@@ -1783,8 +1859,7 @@ export class Z80 {
             if (func) {
                 func();
                 this.cycleCounter += this.cycleCountsEd[opcode];
-            }
-            else {
+            } else {
                 // If the opcode didn't exist, the whole thing is a two-byte NOP.
                 this.cycleCounter += this.cycleCounts[0];
             }
@@ -1878,11 +1953,10 @@ export class Z80 {
                 this.ix = temp;
 
                 this.cycleCounter += this.cycleCountsDd[opcode];
-            }
-            else {
+            } else {
                 // Apparently if an FD opcode doesn't exist,
                 //  it gets treated as an unprefixed opcode.
-                // What we'll do to handle that is just back up the 
+                // What we'll do to handle that is just back up the
                 //  program counter, so that this byte gets decoded
                 //  as a normal instruction.
                 this.pc = (this.pc - 1) & 0xffff;
@@ -1900,7 +1974,6 @@ export class Z80 {
             this.doRestart(0x38);
         };
     }
-
 
     ///////////////////////////////////////////////////////////////////////////////
     /// This table of ED opcodes is pretty sparse;
@@ -1948,7 +2021,7 @@ export class Z80 {
         };
         // 0x47 : LD I, A
         this.edInstructions[0x47] = () => {
-            this.i = this.a
+            this.i = this.a;
         };
         // 0x48 : IN C, (C)
         this.edInstructions[0x48] = () => {
@@ -2110,12 +2183,13 @@ export class Z80 {
         // 0x67 : RRD
         this.edInstructions[0x67] = () => {
             var hlValue = this.core.memRead(this.l | (this.h << 8));
-            var temp1 = hlValue & 0x0f, temp2 = this.a & 0x0f;
+            var temp1 = hlValue & 0x0f,
+                temp2 = this.a & 0x0f;
             hlValue = ((hlValue & 0xf0) >>> 4) | (temp2 << 4);
             this.a = (this.a & 0xf0) | temp1;
             this.core.memWrite(this.l | (this.h << 8), hlValue);
 
-            this.flags.S = (this.a & 0x80) ? 1 : 0;
+            this.flags.S = this.a & 0x80 ? 1 : 0;
             this.flags.Z = this.a ? 0 : 1;
             this.flags.H = 0;
             this.flags.P = this.getParity(this.a) ? 1 : 0;
@@ -2161,12 +2235,13 @@ export class Z80 {
         // 0x6f : RLD
         this.edInstructions[0x6f] = () => {
             var hlValue = this.core.memRead(this.l | (this.h << 8));
-            var temp1 = hlValue & 0xf0, temp2 = this.a & 0x0f;
+            var temp1 = hlValue & 0xf0,
+                temp2 = this.a & 0x0f;
             hlValue = ((hlValue & 0x0f) << 4) | temp2;
             this.a = (this.a & 0xf0) | (temp1 >>> 4);
             this.core.memWrite(this.l | (this.h << 8), hlValue);
 
-            this.flags.S = (this.a & 0x80) ? 1 : 0;
+            this.flags.S = this.a & 0x80 ? 1 : 0;
             this.flags.Z = this.a ? 0 : 1;
             this.flags.H = 0;
             this.flags.P = this.getParity(this.a) ? 1 : 0;
@@ -2365,14 +2440,14 @@ export class Z80 {
             this.pc = (this.pc + 1) & 0xffff;
             this.ix = this.core.memRead(this.pc);
             this.pc = (this.pc + 1) & 0xffff;
-            this.ix |= (this.core.memRead(this.pc) << 8);
+            this.ix |= this.core.memRead(this.pc) << 8;
         };
         // 0x22 : LD (nn), IX
         this.ddInstructions[0x22] = () => {
             this.pc = (this.pc + 1) & 0xffff;
             var address = this.core.memRead(this.pc);
             this.pc = (this.pc + 1) & 0xffff;
-            address |= (this.core.memRead(this.pc) << 8);
+            address |= this.core.memRead(this.pc) << 8;
 
             this.core.memWrite(address, this.ix & 0xff);
             this.core.memWrite((address + 1) & 0xffff, (this.ix >>> 8) & 0xff);
@@ -2403,10 +2478,10 @@ export class Z80 {
             this.pc = (this.pc + 1) & 0xffff;
             var address = this.core.memRead(this.pc);
             this.pc = (this.pc + 1) & 0xffff;
-            address |= (this.core.memRead(this.pc) << 8);
+            address |= this.core.memRead(this.pc) << 8;
 
             this.ix = this.core.memRead(address);
-            this.ix |= (this.core.memRead((address + 1) & 0xffff) << 8);
+            this.ix |= this.core.memRead((address + 1) & 0xffff) << 8;
         };
         // 0x2b : DEC IX
         this.ddInstructions[0x2b] = () => {
@@ -2444,7 +2519,10 @@ export class Z80 {
             this.pc = (this.pc + 1) & 0xffff;
             var offset = this.getSignedOffsetByte(this.core.memRead(this.pc));
             this.pc = (this.pc + 1) & 0xffff;
-            this.core.memWrite((this.ix + offset) & 0xffff, this.core.memRead(this.pc));
+            this.core.memWrite(
+                (this.ix + offset) & 0xffff,
+                this.core.memRead(this.pc)
+            );
         };
         // 0x39 : ADD IX, SP
         this.ddInstructions[0x39] = () => {
@@ -2746,42 +2824,61 @@ export class Z80 {
         this.ddInstructions[0xcb] = () => {
             this.pc = (this.pc + 1) & 0xffff;
             var offset = this.getSignedOffsetByte(this.core.memRead(this.pc));
-            var opcode = this.core.memRead(this.pc), value;
+            var opcode = this.core.memRead(this.pc),
+                value;
             this.pc = (this.pc + 1) & 0xffff;
 
             // As with the "normal" CB prefix, we implement the DDCB prefix
             //  by decoding the opcode directly, rather than using a table.
             if (opcode < 0x40) {
                 // Shift and rotate instructions.
-                var ddcbFunctions = [this.doRlc, this.doRrc, this.doRl, this.doRr,
-                this.doSla, this.doSra, this.doSll, this.doSrl];
+                var ddcbFunctions = [
+                    this.doRlc,
+                    this.doRrc,
+                    this.doRl,
+                    this.doRr,
+                    this.doSla,
+                    this.doSra,
+                    this.doSll,
+                    this.doSrl,
+                ];
 
                 // Most of the opcodes in this range are not valid,
                 //  so we map this opcode onto one of the ones that is.
                 var func = ddcbFunctions[(opcode & 0x38) >>> 3],
-                    value = func.call(this, this.core.memRead((this.ix + offset) & 0xffff));
+                    value = func.call(
+                        this,
+                        this.core.memRead((this.ix + offset) & 0xffff)
+                    );
 
                 this.core.memWrite((this.ix + offset) & 0xffff, value);
-            }
-            else {
+            } else {
                 var bitNumber = (opcode & 0x38) >>> 3;
 
                 if (opcode < 0x80) {
                     // BIT
                     this.flags.N = 0;
                     this.flags.H = 1;
-                    this.flags.Z = !(this.core.memRead((this.ix + offset) & 0xffff) & (1 << bitNumber)) ? 1 : 0;
+                    this.flags.Z = !(
+                        this.core.memRead((this.ix + offset) & 0xffff) &
+                        (1 << bitNumber)
+                    )
+                        ? 1
+                        : 0;
                     this.flags.P = this.flags.Z;
-                    this.flags.S = ((bitNumber === 7) && !this.flags.Z) ? 1 : 0;
-                }
-                else if (opcode < 0xc0) {
+                    this.flags.S = bitNumber === 7 && !this.flags.Z ? 1 : 0;
+                } else if (opcode < 0xc0) {
                     // RES
-                    value = this.core.memRead((this.ix + offset) & 0xffff) & ~(1 << bitNumber) & 0xff;
+                    value =
+                        this.core.memRead((this.ix + offset) & 0xffff) &
+                        ~(1 << bitNumber) &
+                        0xff;
                     this.core.memWrite((this.ix + offset) & 0xffff, value);
-                }
-                else {
+                } else {
                     // SET
-                    value = this.core.memRead((this.ix + offset) & 0xffff) | (1 << bitNumber);
+                    value =
+                        this.core.memRead((this.ix + offset) & 0xffff) |
+                        (1 << bitNumber);
                     this.core.memWrite((this.ix + offset) & 0xffff, value);
                 }
             }
@@ -2789,21 +2886,14 @@ export class Z80 {
             // This implements the undocumented shift, RES, and SET opcodes,
             //  which write their result to memory and also to an 8080 register.
             if (value !== undefined) {
-                if ((opcode & 0x07) === 0)
-                    this.b = value;
-                else if ((opcode & 0x07) === 1)
-                    this.c = value;
-                else if ((opcode & 0x07) === 2)
-                    this.d = value;
-                else if ((opcode & 0x07) === 3)
-                    this.e = value;
-                else if ((opcode & 0x07) === 4)
-                    this.h = value;
-                else if ((opcode & 0x07) === 5)
-                    this.l = value;
+                if ((opcode & 0x07) === 0) this.b = value;
+                else if ((opcode & 0x07) === 1) this.c = value;
+                else if ((opcode & 0x07) === 2) this.d = value;
+                else if ((opcode & 0x07) === 3) this.e = value;
+                else if ((opcode & 0x07) === 4) this.h = value;
+                else if ((opcode & 0x07) === 5) this.l = value;
                 // 6 is the documented opcode, which doesn't set a register.
-                else if ((opcode & 0x07) === 7)
-                    this.a = value;
+                else if ((opcode & 0x07) === 7) this.a = value;
             }
 
             this.cycleCounter += this.cycleCountsCb[opcode] + 8;
@@ -2840,6 +2930,7 @@ export class Z80 {
     ///  additional cycles might be added to these values.
     /// The total number of cycles is the return value of runInstruction().
     ///////////////////////////////////////////////////////////////////////////////
+    // prettier-ignore
     private cycleCounts = [
         4, 10, 7, 6, 4, 4, 7, 4, 4, 11, 7, 6, 4, 4, 7, 4,
         8, 10, 7, 6, 4, 4, 7, 4, 12, 11, 7, 6, 4, 4, 7, 4,
@@ -2859,6 +2950,7 @@ export class Z80 {
         5, 10, 10, 4, 10, 11, 7, 11, 5, 4, 10, 4, 10, 0, 7, 11
     ];
 
+    // prettier-ignore
     private cycleCountsEd = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -2878,6 +2970,7 @@ export class Z80 {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
     ];
 
+    // prettier-ignore
     private cycleCountsCb = [
         8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
         8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8,
@@ -2897,6 +2990,7 @@ export class Z80 {
         8, 8, 8, 8, 8, 8, 15, 8, 8, 8, 8, 8, 8, 8, 15, 8
     ];
 
+    // prettier-ignore
     private cycleCountsDd = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0,
@@ -2917,7 +3011,7 @@ export class Z80 {
     ];
 
     public get hl() {
-        return (this.h & 0xff) << 8 | (this.l & 0xff);
+        return ((this.h & 0xff) << 8) | (this.l & 0xff);
     }
 
     public set hl(value) {
@@ -2926,7 +3020,7 @@ export class Z80 {
     }
 
     public get bc() {
-        return (this.b & 0xff) << 8 | (this.c & 0xff);
+        return ((this.b & 0xff) << 8) | (this.c & 0xff);
     }
 
     public set bc(value) {
@@ -2935,7 +3029,7 @@ export class Z80 {
     }
 
     public get de() {
-        return (this.d & 0xff) << 8 | (this.e & 0xff);
+        return ((this.d & 0xff) << 8) | (this.e & 0xff);
     }
 
     public set de(value) {
@@ -2952,7 +3046,7 @@ export class Z80 {
     }
 
     public get af() {
-        return (this.a & 0xff) << 8 | (this.f & 0xff);
+        return ((this.a & 0xff) << 8) | (this.f & 0xff);
     }
 
     public set af(value) {
@@ -2961,7 +3055,7 @@ export class Z80 {
     }
 
     public get hl_() {
-        return (this.h_ & 0xff) << 8 | (this.l_ & 0xff);
+        return ((this.h_ & 0xff) << 8) | (this.l_ & 0xff);
     }
 
     public set hl_(value) {
@@ -2970,7 +3064,7 @@ export class Z80 {
     }
 
     public get bc_() {
-        return (this.b_ & 0xff) << 8 | (this.c_ & 0xff);
+        return ((this.b_ & 0xff) << 8) | (this.c_ & 0xff);
     }
 
     public set bc_(value) {
@@ -2979,7 +3073,7 @@ export class Z80 {
     }
 
     public get de_() {
-        return (this.d_ & 0xff) << 8 | (this.e_ & 0xff);
+        return ((this.d_ & 0xff) << 8) | (this.e_ & 0xff);
     }
 
     public set de_(value) {
@@ -2996,7 +3090,7 @@ export class Z80 {
     }
 
     public get af_() {
-        return (this.a_ & 0xff) << 8 | (this.f_ & 0xff);
+        return ((this.a_ & 0xff) << 8) | (this.f_ & 0xff);
     }
 
     public set af_(value) {
