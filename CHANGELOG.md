@@ -2,4 +2,4 @@
 
 ## v0.19
 
-Upgraded dependencies.
+Upgraded dependencies, added prettier.
