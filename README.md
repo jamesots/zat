@@ -27,7 +27,8 @@ The idea is that you can do something like this:
         expect(zat.flags.Z).toBe(0);
     });
 
-This compiles a block of Z80 code, and then runs it up to the breakpoint, and then checks that a register is correct. I'm using it in Jasmine.
+This compiles a block of Z80 code, and then runs it up to the breakpoint, and then checks that a register is correct. I'm using it with Vitest, but zat doesn't depend on a
+particular test framework.
 
 The registers are in `zat.z80.regs` (`a`, `f`, `bc`, `hl`, `afPrime`, `ix`, `sp`, `pc` etc.), and
 `zat.flags` gives the flags in F as 0 or 1 (`zat.flags.Z`, `zat.flags.C` etc.), which can also be
@@ -60,7 +61,8 @@ You can write functions to handle memory and io reads and writes.
 
 I am working on improving this part
 of the system so that you can read back the io activity automatically after running a test. You can
-use an IoSpy to respond to IN instructions:
+use an IoSpy to respond to IN instructions, and check OUT instructions. If the IO doesn't happen
+as expected, an `IoSpyError` is thrown, which stops the code running and fails the test:
 
     it('should read a character', function() {
         zat.compileFile('spec/test.z80');
@@ -103,10 +105,7 @@ Use
 To use this in a project, you need to install these npm packages as dev-dependencies:
 
  * zat
- * typescript
- * jasmine
- * @types/jasmine
- * @types/node
+ * vitest
 
 Example:
 
@@ -114,40 +113,25 @@ Example:
 mkdir my-project
 cd my-project
 npm init
-npm i -D zat typescript jasmine @types/jasmine @types/node
-./node_modules/.bin/jasmine init
+npm i -D zat vitest
 ```
-Compile the specs with `tsc` and run the compiled JavaScript with jasmine. Create a
-`spec/tsconfig.json`:
-```
-{
-  "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "outDir": "./build",
-    "types": ["node", "jasmine"]
-  },
-  "include": ["**/*.ts"]
-}
-```
-Set `"spec_dir": "spec/build"` and `"spec_files": ["**/*[sS]pec.js"]` in
-`spec/support/jasmine.json`, and add this into your package.json:
+Add this into your package.json:
 ```
 "scripts": {
-    "test": "tsc -p spec && jasmine"
+    "test": "vitest"
 }
 ```
-Now you can create a test spec in the spec directory. Something like this:
+Now you can create a test spec, e.g. `spec/things.spec.ts`. Something like this:
 ```
-import { Zat, IoSpy, customMatchers, stringToBytes, hex16, Compiler, CompiledProg, Z80 } from 'zat';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { Zat, IoSpy, customMatchers } from 'zat';
+
+expect.extend(customMatchers);
 
 describe('things', function() {
     let zat: Zat;
-    let prog: CompiledProg;
 
     beforeEach(function() {
-        jasmine.addMatchers(customMatchers as any);
-
         zat = new Zat();
     });
 
@@ -157,4 +141,18 @@ describe('things', function() {
         expect(zat.z80.regs.a).toBe(5);
     })
 });
+```
+To use the `toBeComplete()` matcher from TypeScript, you'll also need to declare its type, e.g. in
+`spec/matchers.d.ts`:
+```
+export {};
+
+declare module 'vitest' {
+    interface Matchers<
+        R extends void | Promise<void> = void | Promise<void>,
+        T = unknown,
+    > {
+        toBeComplete(): R;
+    }
+}
 ```

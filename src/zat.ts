@@ -13,7 +13,7 @@ export {
     ListingLine,
     Segment,
 } from './compiler';
-export { IoSpy } from './io_spies';
+export { IoSpy, IoSpyError } from './io_spies';
 import { StepMock } from './step_mocks';
 export { customMatchers } from './custom_matchers';
 

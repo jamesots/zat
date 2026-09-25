@@ -8,7 +8,8 @@
     "prepublish": "tsc",
     "build": "tsc",
     "tsc": "tsc",
-    "test": "tsc -p spec && jasmine --config=spec/support/jasmine.json",
+    "test": "tsc -p spec && vitest run",
+    "test:watch": "vitest",
     "prepare": "husky",
     "lint-staged": "lint-staged"
   },
@@ -20,13 +21,12 @@
   "author": "James Ots <code@jamesots.com>",
   "license": "MIT",
   "devDependencies": {
-    "@types/jasmine": "^6.0.0",
     "@types/node": "^26.6.2",
     "husky": "^9.1.7",
-    "jasmine": "^7.0.0",
     "lint-staged": "^17.5.1",
     "prettier": "^3.9.9",
     "typescript": "^7.0.2",
+    "vitest": "^5.0.1",
     "z80-test": "2.0.1"
   }
 }

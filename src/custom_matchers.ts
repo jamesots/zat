@@ -1,22 +1,16 @@
 import { IoSpy } from './io_spies';
 
-export const customMatchers: jasmine.CustomMatcherFactories = {
-    toBeComplete: function (util: jasmine.MatchersUtil): jasmine.CustomMatcher {
+/**
+ * Custom matchers, for use with expect.extend() in Vitest or Jest.
+ */
+export const customMatchers = {
+    toBeComplete(actual: IoSpy) {
         return {
-            compare: function (
-                actual: IoSpy,
-                expected
-            ): jasmine.CustomMatcherResult {
-                const result: jasmine.CustomMatcherResult = {
-                    pass: true,
-                    message: '',
-                };
-                if (!actual.allDone()) {
-                    result.pass = false;
-                    result.message = 'Expected all io to have been read';
-                }
-                return result;
-            },
+            pass: actual.allDone(),
+            message: () =>
+                actual.allDone()
+                    ? 'Expected IO not to be complete'
+                    : 'Expected all IO to have happened',
         };
     },
 };

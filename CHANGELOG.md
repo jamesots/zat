@@ -20,6 +20,11 @@ Breaking changes:
   a start address continues after it.
 - `CompiledProg` has `origin`, `segments` and `lines` instead of `ast` and
   `sources`.
+- zat no longer depends on Jasmine, and its own tests use Vitest. `IoSpy`
+  throws an `IoSpyError` when IO doesn't happen as expected, instead of
+  calling Jasmine's `expect()` and `fail()`. `customMatchers` are now in the
+  format used by `expect.extend()` in Vitest and Jest, and `lib/matchers` has
+  been removed; see the README for the matcher's type declaration.
 
 New:
 

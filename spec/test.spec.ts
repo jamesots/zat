@@ -1,6 +1,8 @@
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import {
     Zat,
     IoSpy,
+    IoSpyError,
     StepResponse,
     customMatchers,
     stringToBytes,
@@ -9,7 +11,8 @@ import {
     CompiledProg,
     Z80,
 } from '../src/zat';
-import '../src/matchers';
+
+expect.extend(customMatchers);
 
 describe('things', function () {
     let zat: Zat;
@@ -20,8 +23,6 @@ describe('things', function () {
     });
 
     beforeEach(function () {
-        jasmine.addMatchers(customMatchers as any);
-
         zat = new Zat();
         zat.defaultCallSp = 0xff00;
     });
@@ -148,6 +149,36 @@ extrastart:
             [6, 0],
         ]);
         expect(count).toEqual(0x100 * 0x10 - 1);
+    });
+
+    it('should throw if IO is not as expected', function () {
+        zat.compile(`
+ft245: equ 8
+start:
+    ld b,ft245 ; z80asm omits unused constants from the symbols
+    ld a,1
+    out (5),a
+    ld a,2
+    out (6),a
+    ret
+        `);
+        let ioSpy = new IoSpy(zat).onOut([5, 1], [6, 3]);
+        zat.onIoWrite = ioSpy.writeSpy();
+        expect(() => zat.call('start')).toThrow(
+            new IoSpyError('Expected OUT to port 06 of 03 but got 02')
+        );
+
+        ioSpy = new IoSpy(zat).onOut(5, 1);
+        zat.onIoWrite = ioSpy.writeSpy();
+        expect(() => zat.call('start')).toThrow(
+            'Unexpected OUT to port 06 of 02: all the expected IO has happened'
+        );
+
+        ioSpy = new IoSpy(zat).onOut([5, 1], ['ft245', 2]);
+        zat.onIoWrite = ioSpy.writeSpy();
+        expect(() => zat.call('start')).toThrow(
+            'Expected OUT to port 08 (ft245) but got port 06'
+        );
     });
 
     it('should read and write', function () {

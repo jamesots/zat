@@ -1,4 +1,14 @@
-import { Zat, stringToBytes } from './zat';
+import { Zat, stringToBytes, hex8 } from './zat';
+
+/**
+ * Thrown when IO doesn't happen as an IoSpy expects.
+ */
+export class IoSpyError extends Error {
+    public constructor(message: string) {
+        super(message);
+        this.name = 'IoSpyError';
+    }
+}
 
 export class IoSpy {
     private spies: AbstractIoSpy[] = [];
@@ -8,10 +18,9 @@ export class IoSpy {
 
     public readSpy() {
         return (port: number) => {
-            const returnValue = this.spies[this.spyIndex].onRead(
-                this.zat,
-                port
-            );
+            const returnValue = this.currentSpy(
+                `IN from port ${hex8(port & 0xff)}`
+            ).onRead(this.zat, port);
             if (this.spies[this.spyIndex].finished) {
                 this.spyIndex++;
             }
@@ -20,25 +29,37 @@ export class IoSpy {
     }
 
     public writeSpy() {
-        return (port, value) => {
-            this.spies[this.spyIndex].onWrite(this.zat, port, value);
+        return (port: number, value: number) => {
+            this.currentSpy(
+                `OUT to port ${hex8(port & 0xff)} of ${hex8(value)}`
+            ).onWrite(this.zat, port, value);
             if (this.spies[this.spyIndex].finished) {
                 this.spyIndex++;
             }
         };
     }
 
+    private currentSpy(description: string) {
+        if (this.allDone()) {
+            throw new IoSpyError(
+                `Unexpected ${description}: all the expected IO has happened`
+            );
+        }
+        return this.spies[this.spyIndex];
+    }
+
     /**
      * Return values to specified ports when IO read operations occurr.
      *
-     * The values array contains an array of tuples. The first value in the tuple
-     * is the port on which a read is expected. The test will fail if a read occurrs
-     * on a different port. The second value in the tuple is the number to return.
+     * Each value is a tuple. The first value in the tuple is the port on
+     * which a read is expected; an IoSpyError is thrown if a read occurrs on
+     * a different port. The second value in the tuple is the number to
+     * return, or a string or array of numbers to return from successive reads.
      *
-     * If more IO reads occurr than there are values in the array, the test will fail,
-     * and 0 will be returned.
+     * An IoSpyError is thrown if an IO write occurrs before all the reads
+     * have happened.
      *
-     * @param values an array of tuples
+     * @param values tuples, or a single port and value
      */
     public onIn(...values) {
         this.spies.push(new ReturnValuesSpy(values));
@@ -50,6 +71,11 @@ export class IoSpy {
         return this;
     }
 
+    /**
+     * Expect values to be written to specified ports, in the same format as
+     * onIn. An IoSpyError is thrown if a different value or port is written
+     * to, or if an IO read occurrs before all the writes have happened.
+     */
     public onOut(...values) {
         this.spies.push(new ExpectValuesSpy(values));
         return this;
@@ -65,6 +91,17 @@ export class IoSpy {
     }
 }
 
+function checkPort(zat: Zat, port: number, expectedPort, description: string) {
+    const expected = zat.getAddress(expectedPort);
+    if ((port & 0xff) !== expected) {
+        throw new IoSpyError(
+            `Expected ${description} port ${hex8(expected)}${
+                typeof expectedPort === 'string' ? ` (${expectedPort})` : ''
+            } but got port ${hex8(port & 0xff)}`
+        );
+    }
+}
+
 abstract class AbstractIoSpy {
     public finished = false;
     public abstract onRead(zat: Zat, port: number): number;
@@ -76,10 +113,13 @@ class ReturnValuesSpy extends AbstractIoSpy {
     private subIndex = 0;
     private subValues = [];
 
-    public constructor(private values, private ignoreWrites = false) {
+    public constructor(
+        private values,
+        private ignoreWrites = false
+    ) {
         super();
         if (values.length === 0) {
-            fail('Must return at least one value');
+            throw new IoSpyError('Must return at least one value');
         }
         if (!Array.isArray(values[0]) && values.length === 2) {
             this.values = [values];
@@ -88,8 +128,7 @@ class ReturnValuesSpy extends AbstractIoSpy {
 
     public onRead(zat: Zat, port) {
         let [expectedPort, returnValue] = this.values[this.index];
-        expectedPort = zat.getAddress(expectedPort);
-        expect(port & 0xff).toBe(expectedPort);
+        checkPort(zat, port, expectedPort, 'IN from');
         if (typeof returnValue === 'string' && this.subIndex === 0) {
             this.subValues = stringToBytes(returnValue);
         } else if (Array.isArray(returnValue) && this.subIndex === 0) {
@@ -117,7 +156,11 @@ class ReturnValuesSpy extends AbstractIoSpy {
 
     public onWrite(zat: Zat, port, value) {
         if (!this.ignoreWrites) {
-            fail('Not expecting an IO write at this point');
+            throw new IoSpyError(
+                `Expected an IN, but got OUT to port ${hex8(
+                    port & 0xff
+                )} of ${hex8(value)}`
+            );
         }
     }
 }
@@ -127,10 +170,13 @@ class ExpectValuesSpy extends AbstractIoSpy {
     private subIndex = 0;
     private subValues = [];
 
-    public constructor(private values, private ignoreReads = false) {
+    public constructor(
+        private values,
+        private ignoreReads = false
+    ) {
         super();
         if (values.length === 0) {
-            fail('Must expect at least one value');
+            throw new IoSpyError('Must expect at least one value');
         }
         if (!Array.isArray(values[0]) && values.length === 2) {
             this.values = [values];
@@ -139,15 +185,16 @@ class ExpectValuesSpy extends AbstractIoSpy {
 
     public onRead(zat: Zat, port) {
         if (!this.ignoreReads) {
-            fail('Not expecting an IO read at this point');
+            throw new IoSpyError(
+                `Expected an OUT, but got IN from port ${hex8(port & 0xff)}`
+            );
         }
         return 0;
     }
 
     public onWrite(zat: Zat, port, value) {
         let [expectedPort, expectedValue] = this.values[this.index];
-        expectedPort = zat.getAddress(expectedPort);
-        expect(port & 0xff).toBe(expectedPort);
+        checkPort(zat, port, expectedPort, 'OUT to');
         if (typeof expectedValue === 'string' && this.subIndex === 0) {
             this.subValues = stringToBytes(expectedValue);
         } else if (Array.isArray(expectedValue) && this.subIndex === 0) {
@@ -155,7 +202,7 @@ class ExpectValuesSpy extends AbstractIoSpy {
         }
         if (typeof expectedValue === 'string' || Array.isArray(expectedValue)) {
             const num = this.subValues[this.subIndex];
-            expect(value).toBe(num);
+            checkValue(value, num, port);
             this.subIndex++;
             if (this.subIndex === expectedValue.length) {
                 this.subIndex = 0;
@@ -165,11 +212,21 @@ class ExpectValuesSpy extends AbstractIoSpy {
                 }
             }
         } else {
-            expect(value).toBe(expectedValue);
+            checkValue(value, expectedValue, port);
             this.index++;
             if (this.index === this.values.length) {
                 this.finished = true;
             }
         }
+    }
+}
+
+function checkValue(value: number, expected: number, port: number) {
+    if (value !== expected) {
+        throw new IoSpyError(
+            `Expected OUT to port ${hex8(port & 0xff)} of ${hex8(
+                expected
+            )} but got ${hex8(value)}`
+        );
     }
 }

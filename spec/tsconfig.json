@@ -1,15 +1,11 @@
 {
-  "compilerOptions": {
-    "target": "es6",
-    "module": "commonjs",
-    "outDir": "./build",
-    "rootDir": "..",
-    "types": ["node", "jasmine"],
-    "strict": false,
-    "noImplicitAny": false
-  },
-  "include": [
-    "**/*.ts",
-    "../src/**/*.d.ts"
-  ]
+    "compilerOptions": {
+        "target": "es2022",
+        "module": "preserve",
+        "noEmit": true,
+        "types": ["node"],
+        "strict": false,
+        "noImplicitAny": false
+    },
+    "include": ["**/*.ts", "../src/**/*.ts", "../vitest.config.mts"]
 }

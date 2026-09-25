@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { Runner, Delegate, CpuEvent } from 'z80-test';
 import { Z80, Hal, RegisterSet } from '../src/zat';
 
