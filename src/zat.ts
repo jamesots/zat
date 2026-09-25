@@ -226,12 +226,12 @@ export class Zat {
      */
     public load(
         mem: number[] | Uint8Array | string,
-        start: number | string = 0
+        loadAt: number | string = 0
     ) {
         if (typeof mem === 'string') {
             mem = stringToBytes(mem);
         }
-        const address = this.getAddress(start);
+        const address = this.getAddress(loadAt);
         this.memory.set(mem, address);
         // The code which was there, if any, has been replaced
         if (this.sourceLines.size > 0) {

@@ -326,10 +326,10 @@ expect(zat.memory[0x8001]).toBe(0);
 Reading or writing `zat.memory` doesn't call the [memory hooks](#memory-and-io-hooks); only the
 emulated CPU's reads and writes do.
 
-### `zat.load(data, start = 0)`
+### `zat.load(data, loadAt = 0)`
 
 Copies bytes into memory. `data` can be an array of numbers, a `Uint8Array`, or a string, whose
-character codes are used. `start` is an address or a symbol.
+character codes are used. `loadAt` is an address or a symbol.
 
 ```ts
 zat.load([0x3e, 0x12, 0x76], 0x100);
