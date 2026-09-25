@@ -35,6 +35,17 @@ executed, the number of T-states they took, and how many times each address was 
 
 Symbols are case-sensitive, as they are in z80asm.
 
+To test interrupt handlers, `zat.interrupt()` raises an interrupt, or `run()` and `call()` can raise
+them regularly:
+
+    zat.call('main_loop', { interruptEvery: 69888 });
+
+This raises a maskable interrupt every 69888 T-states (a 50Hz frame on a 3.5MHz ZX Spectrum), or a
+non-maskable one if `interruptNonMaskable: true` is also passed. As on a real Z80, an interrupt is
+missed if interrupts are disabled when it's raised, and one raised straight after `EI` is accepted
+after the next instruction. After a `HALT`, the CPU waits for the next interrupt. The result
+includes the number of interrupts accepted.
+
 The registers are in `zat.z80.regs` (`a`, `f`, `bc`, `hl`, `afPrime`, `ix`, `sp`, `pc` etc.), and
 `zat.flags` gives the flags in F as 0 or 1 (`zat.flags.Z`, `zat.flags.C` etc.), which can also be
 set. `zat.altFlags` does the same for F'.

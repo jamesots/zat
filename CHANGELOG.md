@@ -41,7 +41,9 @@ Breaking changes:
 
 New:
 
-- `zat.interrupt()` to trigger a maskable or non-maskable interrupt.
+- `zat.interrupt()` to trigger a maskable or non-maskable interrupt, and the
+  `interruptEvery` and `interruptNonMaskable` run options to raise them
+  regularly. The result of `run()` includes the number of interrupts.
 - `zat.step()` to execute a single instruction.
 - Assembled code is cached, in memory and on disk, which makes running tests
   much faster when the code hasn't changed.

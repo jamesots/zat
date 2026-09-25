@@ -63,6 +63,11 @@ export class Zat {
     private hal: Hal;
     /** The first bytes read during the current instruction */
     private fetched: number[] = [];
+    /**
+     * Whether the last instruction was EI. A maskable interrupt isn't
+     * accepted until after the instruction following EI.
+     */
+    private eiDelay = false;
     private stepMock = new StepMock(this);
     private logging = false;
     private breakpoints: { [addr: number]: true } = {};
@@ -273,9 +278,13 @@ export class Zat {
     /**
      * Interrupt the CPU. A maskable interrupt is ignored if interrupts are
      * disabled. In interrupt mode 2, the byte from the data bus is $FF.
+     *
+     * Returns the number of T-states the interrupt took, which is 0 if it
+     * was ignored.
      */
-    public interrupt(nonMaskable = false) {
+    public interrupt(nonMaskable = false): number {
         const sp = this.z80.regs.sp;
+        const tStates = this.hal.tStateCount;
         if (nonMaskable) {
             this.z80.nonMaskableInterrupt();
         } else {
@@ -284,6 +293,7 @@ export class Zat {
         if (this.z80.regs.sp !== sp) {
             this.lastInstruction = InstructionType.INT;
         }
+        return this.hal.tStateCount - tStates;
     }
 
     /**
@@ -294,6 +304,7 @@ export class Zat {
         const tStates = this.hal.tStateCount;
         this.fetched = [];
         this.z80.step();
+        this.eiDelay = this.fetched[0] === 0xfb;
         this.lastInstruction = classifyInstruction(
             this.fetched,
             sp,
@@ -307,6 +318,14 @@ export class Zat {
      * more than runOptions.steps, or instruction at runOptions.breakAt is
      * reached.
      *
+     * If runOptions.interruptEvery is set, an interrupt is raised every that
+     * many T-states, starting that many T-states after the run starts. It's
+     * a maskable interrupt, unless runOptions.interruptNonMaskable is true.
+     * A maskable interrupt is missed if interrupts are disabled when it's
+     * raised, but if the last instruction was EI, it's accepted after the
+     * next instruction. After a HALT, the CPU waits for the next interrupt,
+     * unless it would be missed.
+     *
      * If 'call' is true, it will run until the stack pointer is 2 more than it
      * started out at. This may happen as a result of popping something of the
      * stack rather than a return statement.
@@ -316,7 +335,7 @@ export class Zat {
      * the HALT.
      *
      * Returns the number of instructions executed, the number of T-states,
-     * and the coverage.
+     * the number of interrupts accepted, and the coverage.
      */
     public run(start?: number | string, runOptions?: RunOptions): RunResult {
         runOptions = runOptions || {};
@@ -342,24 +361,57 @@ export class Zat {
             coverage = {};
         }
 
+        const every = runOptions.interruptEvery;
+        if (every !== undefined && !(every > 0)) {
+            throw new Error('interruptEvery must be more than 0');
+        }
+        const nonMaskable = runOptions.interruptNonMaskable ?? false;
+        let nextInterrupt = every ?? Infinity;
+        let interrupts = 0;
+
         let count = 0;
         let tStates = 0;
         let stepResponse: StepResponse = StepResponse.RUN;
-        while (
-            !this.z80.regs.halted &&
-            count < steps &&
-            !this.breakpoints[this.z80.regs.pc] &&
-            !(
-                (stepResponse = this.stepMock.onStep(this.z80.regs.pc)) ===
-                StepResponse.BREAK
-            ) &&
-            !(
-                runOptions.call &&
-                this.z80.regs.sp === startSp &&
-                this.lastInstruction === InstructionType.RET
-            )
-        ) {
-            const pc = this.z80.regs.pc;
+        while (true) {
+            if (
+                every !== undefined &&
+                (tStates >= nextInterrupt || regs.halted)
+            ) {
+                const accepted =
+                    nonMaskable || (regs.iff1 !== 0 && !this.eiDelay);
+                if (regs.halted && tStates < nextInterrupt) {
+                    if (!accepted) {
+                        // Halted with interrupts disabled, so stuck
+                        break;
+                    }
+                    // Wait for the interrupt
+                    tStates = nextInterrupt;
+                }
+                if (accepted) {
+                    tStates += this.interrupt(nonMaskable);
+                    interrupts++;
+                }
+                // The interrupt is missed if interrupts are disabled, but
+                // is accepted after the instruction following EI
+                if (accepted || !this.eiDelay) {
+                    while (nextInterrupt <= tStates) {
+                        nextInterrupt += every;
+                    }
+                }
+            }
+            if (
+                regs.halted ||
+                count >= steps ||
+                this.breakpoints[regs.pc] ||
+                (stepResponse = this.stepMock.onStep(regs.pc)) ===
+                    StepResponse.BREAK ||
+                (runOptions.call &&
+                    regs.sp === startSp &&
+                    this.lastInstruction === InstructionType.RET)
+            ) {
+                break;
+            }
+            const pc = regs.pc;
             if (this.logging) {
                 console.log(
                     `${this.formatBriefRegisters()} ${this.getSymbol(pc)}`
@@ -379,7 +431,7 @@ export class Zat {
             }
             stepResponse = StepResponse.RUN;
         }
-        return { instructions: count, tStates, coverage };
+        return { instructions: count, tStates, interrupts, coverage };
     }
 
     public saveMemory(): SavedMemory {
@@ -543,11 +595,20 @@ export interface RunResult {
     instructions: number;
     /** The number of T-states taken */
     tStates: number;
+    /** The number of interrupts accepted */
+    interrupts: number;
     /** The number of times each address was executed */
     coverage: Coverage;
 }
 
 export interface RunOptions {
+    /**
+     * Raise an interrupt every this many T-states, e.g. 69888 for a 50Hz
+     * frame interrupt on a 3.5MHz ZX Spectrum
+     */
+    interruptEvery?: number;
+    /** Make the interrupts raised by interruptEvery non-maskable */
+    interruptNonMaskable?: boolean;
     steps?: number;
     call?: boolean;
     sp?: number | string;
