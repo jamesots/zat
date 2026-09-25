@@ -1,5 +1,10 @@
-import { Z80, Flags, InstructionType } from './z80/Z80';
-export { Z80, Flags, InstructionType } from './z80/Z80';
+import { Z80, Hal } from './vendor/z80-emulator';
+export { Z80, Hal } from './vendor/z80-emulator';
+export { Flag, RegisterSet } from './vendor/z80-base';
+import { Flags } from './flags';
+export { Flags } from './flags';
+import { InstructionType, classifyInstruction } from './instruction_type';
+export { InstructionType } from './instruction_type';
 import { Compiler, CompiledProg } from './compiler';
 export {
     Compiler,
@@ -15,6 +20,32 @@ export { customMatchers } from './custom_matchers';
 export class Zat {
     public readonly z80: Z80;
     public readonly memory = new Uint8Array(65536);
+
+    /**
+     * The flags in the F register, e.g. zat.flags.Z
+     */
+    public readonly flags = new Flags(
+        () => this.z80.regs.f,
+        (f) => (this.z80.regs.f = f)
+    );
+
+    /**
+     * The flags in the alternate F register
+     */
+    public readonly altFlags = new Flags(
+        () => this.z80.regs.afPrime & 0xff,
+        (f) => (this.z80.regs.afPrime = (this.z80.regs.afPrime & 0xff00) | f)
+    );
+
+    /**
+     * The kind of the last instruction executed. Only CALLs and RETs which
+     * were taken count as CALL or RET.
+     */
+    public lastInstruction = InstructionType.OTHER;
+
+    private hal: Hal;
+    /** The first bytes read during the current instruction */
+    private fetched: number[] = [];
     private stepMock = new StepMock(this);
     private logging = false;
     private breakpoints: { [addr: number]: true } = {};
@@ -55,12 +86,22 @@ export class Zat {
     public defaultCallSp: number | string;
 
     constructor() {
-        this.z80 = new Z80({
-            memRead: (addr) => this.memRead(addr),
-            memWrite: (addr, value) => this.memWrite(addr, value),
-            ioRead: (port) => this.ioRead(port),
-            ioWrite: (port, value) => this.ioWrite(port, value),
-        });
+        this.hal = {
+            tStateCount: 0,
+            readMemory: (addr) => {
+                const value = this.memRead(addr);
+                if (this.fetched.length < 2) {
+                    this.fetched.push(value);
+                }
+                return value;
+            },
+            writeMemory: (addr, value) => this.memWrite(addr, value),
+            contendMemory: () => {},
+            readPort: (port) => this.ioRead(port),
+            writePort: (port, value) => this.ioWrite(port, value),
+            contendPort: () => {},
+        };
+        this.z80 = new Z80(this.hal);
     }
 
     private memRead(addr: number): number {
@@ -183,9 +224,41 @@ export class Zat {
         runOptions.call = true;
         const sp = runOptions.sp || this.defaultCallSp;
         if (typeof sp !== 'undefined') {
-            this.z80.sp = this.getAddress(sp);
+            this.z80.regs.sp = this.getAddress(sp);
         }
         return this.run(start, runOptions);
+    }
+
+    /**
+     * Interrupt the CPU. A maskable interrupt is ignored if interrupts are
+     * disabled. In interrupt mode 2, the byte from the data bus is $FF.
+     */
+    public interrupt(nonMaskable = false) {
+        const sp = this.z80.regs.sp;
+        if (nonMaskable) {
+            this.z80.nonMaskableInterrupt();
+        } else {
+            this.z80.maskableInterrupt();
+        }
+        if (this.z80.regs.sp !== sp) {
+            this.lastInstruction = InstructionType.INT;
+        }
+    }
+
+    /**
+     * Execute one instruction, and return the number of T-states it took.
+     */
+    public step(): number {
+        const sp = this.z80.regs.sp;
+        const tStates = this.hal.tStateCount;
+        this.fetched = [];
+        this.z80.step();
+        this.lastInstruction = classifyInstruction(
+            this.fetched,
+            sp,
+            this.z80.regs.sp
+        );
+        return this.hal.tStateCount - tStates;
     }
 
     /**
@@ -197,16 +270,24 @@ export class Zat {
      * started out at. This may happen as a result of popping something of the
      * stack rather than a return statement.
      *
+     * After a HALT, the PC is left pointing at the HALT instruction. If run
+     * is then called without a start address, execution continues after
+     * the HALT.
+     *
      * Returns the number of instructions executed and the number of T-states
      */
     public run(start?: number | string, runOptions?: RunOptions) {
         runOptions = runOptions || {};
-        let startSp = this.z80.sp + 2;
-        if (startSp >= 65536) {
-            startSp = startSp - 65536;
+        const regs = this.z80.regs;
+        const startSp = (regs.sp + 2) & 0xffff;
+        if (regs.halted) {
+            regs.halted = 0;
+            if (start === undefined) {
+                regs.pc = (regs.pc + 1) & 0xffff;
+            }
         }
         if (start !== undefined) {
-            this.z80.pc = this.getAddress(start);
+            regs.pc = this.getAddress(start);
         }
         let steps = 10000000;
         if (runOptions.steps !== undefined) {
@@ -219,37 +300,35 @@ export class Zat {
             coverage = {};
         }
 
-        this.z80.halted = false;
         let count = 0;
         let tStates = 0;
         let stepResponse: StepResponse = StepResponse.RUN;
         while (
-            !this.z80.halted &&
+            !this.z80.regs.halted &&
             count < steps &&
-            !this.breakpoints[this.z80.pc] &&
+            !this.breakpoints[this.z80.regs.pc] &&
             !(
-                (stepResponse = this.stepMock.onStep(this.z80.pc)) ===
+                (stepResponse = this.stepMock.onStep(this.z80.regs.pc)) ===
                 StepResponse.BREAK
             ) &&
             !(
                 runOptions.call &&
-                this.z80.sp === startSp &&
-                this.z80.lastInstruction === InstructionType.RET
+                this.z80.regs.sp === startSp &&
+                this.lastInstruction === InstructionType.RET
             )
         ) {
+            const pc = this.z80.regs.pc;
             if (this.logging) {
                 console.log(
-                    `${this.formatBriefRegisters()} ${this.getSymbol(
-                        this.z80.pc
-                    )}`
+                    `${this.formatBriefRegisters()} ${this.getSymbol(pc)}`
                 );
             }
             if (stepResponse !== StepResponse.SKIP) {
-                if (coverage[this.z80.pc] === undefined) {
-                    coverage[this.z80.pc] = 0;
+                if (coverage[pc] === undefined) {
+                    coverage[pc] = 0;
                 }
-                coverage[this.z80.pc]++;
-                tStates += this.z80.runInstruction();
+                coverage[pc]++;
+                tStates += this.step();
                 count++;
             }
             stepResponse = StepResponse.RUN;
@@ -277,44 +356,31 @@ export class Zat {
     }
 
     public showRegisters() {
+        const regs = this.z80.regs;
         console.log(
-            `AF: ${hex16(this.z80.af)}  AF': ${hex16(this.z80.af_)}
-BC: ${hex16(this.z80.bc)}  BC': ${hex16(this.z80.bc_)}
-DE: ${hex16(this.z80.de)}  DE': ${hex16(this.z80.de_)}
-HL: ${hex16(this.z80.hl)}  HL': ${hex16(this.z80.hl_)}
-IX: ${hex16(this.z80.ix)}   IY: ${hex16(this.z80.iy)}
-PC: ${hex16(this.z80.pc)}   SP: ${hex16(this.z80.sp)}
-I: ${hex16(this.z80.i)}    R: ${hex16(this.z80.r)}
-    S Z Y H X P N C
-F: ${this.z80.flags.S} ${this.z80.flags.Z} ${this.z80.flags.Y} ${
-                this.z80.flags.H
-            } ${this.z80.flags.X} ${this.z80.flags.P} ${this.z80.flags.N} ${
-                this.z80.flags.C
-            }
-F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${
-                this.z80.flags_.H
-            } ${this.z80.flags_.X} ${this.z80.flags_.P} ${this.z80.flags_.N} ${
-                this.z80.flags_.C
-            }
+            `AF: ${hex16(regs.af)}  AF': ${hex16(regs.afPrime)}
+BC: ${hex16(regs.bc)}  BC': ${hex16(regs.bcPrime)}
+DE: ${hex16(regs.de)}  DE': ${hex16(regs.dePrime)}
+HL: ${hex16(regs.hl)}  HL': ${hex16(regs.hlPrime)}
+IX: ${hex16(regs.ix)}   IY: ${hex16(regs.iy)}
+PC: ${hex16(regs.pc)}   SP: ${hex16(regs.sp)}
+I: ${hex8(regs.i)}      R: ${hex8(regs.r)}
+F:  ${this.flags}
+F': ${this.altFlags}
 `
         );
     }
 
     public formatBriefRegisters() {
-        const flags = `${this.z80.flags.S == 1 ? 'S' : '.'}${
-            this.z80.flags.Z == 1 ? 'Z' : '.'
-        }${this.z80.flags.H == 1 ? 'H' : '.'}${
-            this.z80.flags.P == 1 ? 'P' : '.'
-        }${this.z80.flags.N == 1 ? 'N' : '.'}${
-            this.z80.flags.C == 1 ? 'C' : '.'
-        }`;
-        return `AF:${hex16(this.z80.af)} ${flags} BC:${hex16(
-            this.z80.bc
-        )} DE:${hex16(this.z80.de)} HL:${hex16(this.z80.hl)} IX:${hex16(
-            this.z80.ix
-        )} IY:${hex16(this.z80.iy)} SP:${hex16(this.z80.sp)} (SP):${hex8(
-            this.memory[this.z80.sp + 1]
-        )}${hex8(this.memory[this.z80.sp])} PC:${hex16(this.z80.pc)}`;
+        const regs = this.z80.regs;
+        const sp = regs.sp;
+        return `AF:${hex16(regs.af)} ${this.flags} BC:${hex16(
+            regs.bc
+        )} DE:${hex16(regs.de)} HL:${hex16(regs.hl)} IX:${hex16(
+            regs.ix
+        )} IY:${hex16(regs.iy)} SP:${hex16(sp)} (SP):${hex8(
+            this.memory[(sp + 1) & 0xffff]
+        )}${hex8(this.memory[sp])} PC:${hex16(regs.pc)}`;
     }
 
     public dumpMemory(start: number, length: number) {

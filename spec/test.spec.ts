@@ -30,8 +30,8 @@ describe('things', function () {
         zat.loadProg(prog);
         zat.setBreakpoint('breakhere');
         zat.run('newstart');
-        expect(zat.z80.a).toBe(0x12);
-        expect(zat.z80.flags.Z).toBe(1);
+        expect(zat.z80.regs.a).toBe(0x12);
+        expect(zat.flags.Z).toBe(1);
     });
 
     it('should work with a compiled string', function () {
@@ -54,8 +54,8 @@ breakhere:
         `);
         zat.setBreakpoint('breakhere');
         zat.run('newstart');
-        expect(zat.z80.a).toBe(0x12);
-        expect(zat.z80.flags.Z).toBe(1);
+        expect(zat.z80.regs.a).toBe(0x12);
+        expect(zat.flags.Z).toBe(1);
     });
 
     it('should work with loading data', function () {
@@ -66,16 +66,16 @@ breakhere:
         ]);
         zat.setBreakpoint(26);
         zat.run(20);
-        expect(zat.z80.a).toBe(0x12);
-        expect(zat.z80.flags.Z).toBe(1);
+        expect(zat.z80.regs.a).toBe(0x12);
+        expect(zat.flags.Z).toBe(1);
     });
 
     it('should use onStep to stop', function () {
         zat.loadProg(prog);
         zat.setBreakpoint('breakhere');
         zat.run('newstart');
-        expect(zat.z80.a).toBe(0x12);
-        expect(zat.z80.flags.Z).toBe(1);
+        expect(zat.z80.regs.a).toBe(0x12);
+        expect(zat.flags.Z).toBe(1);
 
         // expect(zat.memoryAt('line', 10)).toBe('hello\0');
     });
@@ -92,8 +92,8 @@ extrastart:
         );
         zat.setBreakpoint('breakhere');
         zat.run('extrastart');
-        expect(zat.z80.a).toBe(0x12);
-        expect(zat.z80.flags.Z).toBe(1);
+        expect(zat.z80.regs.a).toBe(0x12);
+        expect(zat.flags.Z).toBe(1);
     });
 
     it('should write a line', function () {
@@ -113,7 +113,7 @@ extrastart:
             .onOut(8, 'o');
         zat.onIoWrite = ioSpy.writeSpy();
         zat.onIoRead = ioSpy.readSpy();
-        zat.z80.hl = 0x5000;
+        zat.z80.regs.hl = 0x5000;
         zat.call('write_line');
         expect(ioSpy).toBeComplete();
     });
@@ -124,7 +124,7 @@ extrastart:
         let ioSpy = new IoSpy(zat).onIn([9, '\xff\xff\0'], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
         zat.call('read_char');
-        expect(zat.z80.a).toEqual(65);
+        expect(zat.z80.regs.a).toEqual(65);
         expect(ioSpy).toBeComplete();
     });
 
@@ -226,60 +226,60 @@ start:
         zat.loadProg(prog);
 
         zat.load('LET\0', 'line');
-        zat.z80.hl = zat.getAddress('line');
+        zat.z80.regs.hl = zat.getAddress('line');
         zat.call('compare');
 
-        expect(zat.z80.de).toBe(zat.getAddress('let'));
+        expect(zat.z80.regs.de).toBe(zat.getAddress('let'));
     });
 
     it('should find second string', function () {
         zat.loadProg(prog);
 
         zat.load('TIME\0', 'line');
-        zat.z80.hl = zat.getAddress('line');
+        zat.z80.regs.hl = zat.getAddress('line');
         zat.call('compare');
 
-        expect(zat.z80.de).toBe(zat.getAddress('time'));
+        expect(zat.z80.regs.de).toBe(zat.getAddress('time'));
     });
 
     it('should find second string, terminated by space', function () {
         zat.loadProg(prog);
 
         zat.load('TIME ', 'line');
-        zat.z80.hl = zat.getAddress('line');
+        zat.z80.regs.hl = zat.getAddress('line');
         zat.call('compare');
 
-        expect(zat.z80.de).toBe(zat.getAddress('time'));
+        expect(zat.z80.regs.de).toBe(zat.getAddress('time'));
     });
 
     it('should fail to find string', function () {
         zat.loadProg(prog);
 
         zat.load('WIBBLE\0', 'line');
-        zat.z80.hl = zat.getAddress('line');
+        zat.z80.regs.hl = zat.getAddress('line');
         zat.call('compare');
 
-        expect(zat.z80.de).toBe(zat.getAddress('error'));
+        expect(zat.z80.regs.de).toBe(zat.getAddress('error'));
     });
 
     it('should fail to find short string', function () {
         zat.loadProg(prog);
 
         zat.load('LE ', 'line');
-        zat.z80.hl = zat.getAddress('line');
+        zat.z80.regs.hl = zat.getAddress('line');
         zat.call('compare');
 
-        expect(zat.z80.de).toBe(zat.getAddress('error'));
+        expect(zat.z80.regs.de).toBe(zat.getAddress('error'));
     });
 
     it('should fail to find no string', function () {
         zat.loadProg(prog);
 
         zat.load(' ', 'line');
-        zat.z80.hl = zat.getAddress('line');
+        zat.z80.regs.hl = zat.getAddress('line');
         zat.call('compare');
 
-        expect(zat.z80.de).toBe(zat.getAddress('error'));
+        expect(zat.z80.regs.de).toBe(zat.getAddress('error'));
     });
 
     it('should fail to find incomplete string', function () {
@@ -290,10 +290,10 @@ start:
         //     return false;
         // }
         zat.load('LETTER\0', 'line');
-        zat.z80.hl = zat.getAddress('line');
+        zat.z80.regs.hl = zat.getAddress('line');
         zat.call('compare');
 
-        expect(zat.z80.de).toBe(zat.getAddress('error'));
+        expect(zat.z80.regs.de).toBe(zat.getAddress('error'));
         // zat.dumpMemory(0, 0x300);
     });
 
@@ -309,14 +309,14 @@ subroutine:
         `);
 
         zat.run('start');
-        expect(zat.z80.a).toBe(6);
+        expect(zat.z80.regs.a).toBe(6);
 
         zat.mockCall('subroutine', () => {
-            zat.z80.a += 10;
+            zat.z80.regs.a += 10;
             return StepResponse.RUN;
         });
         zat.run('start');
-        expect(zat.z80.a).toBe(16);
+        expect(zat.z80.regs.a).toBe(16);
     });
 
     it('should not intercept a call if there is no call statement', function () {
@@ -329,10 +329,117 @@ subroutine:
         `);
 
         zat.mockCall('subroutine', () => {
-            zat.z80.a += 10;
+            zat.z80.regs.a += 10;
         });
         zat.call('start');
-        expect(zat.z80.a).toBe(6);
+        expect(zat.z80.regs.a).toBe(6);
+    });
+
+    it('should not intercept a call if a conditional call is not taken', function () {
+        zat.compile(`
+start:
+    ld a,5
+    or a
+    call z,subroutine
+subroutine:
+    add a,1
+    ret
+        `);
+
+        zat.mockCall('subroutine', () => {
+            zat.z80.regs.a += 10;
+        });
+        zat.call('start');
+        expect(zat.z80.regs.a).toBe(6);
+    });
+
+    it('should intercept an RST', function () {
+        zat.compile(`
+    jp start
+    section rst8
+    org $08
+rst8:
+    ret
+    section main
+    org $100
+start:
+    ld a,5
+    rst 8
+    halt
+        `);
+
+        zat.mockCall('rst8', () => {
+            zat.z80.regs.a += 10;
+        });
+        zat.run('start');
+        expect(zat.z80.regs.a).toBe(15);
+    });
+
+    it('should continue after a HALT', function () {
+        zat.compile(`
+start:
+    ld a,1
+    halt
+    ld a,2
+    halt
+        `);
+
+        zat.run('start');
+        expect(zat.z80.regs.a).toBe(1);
+        expect(zat.z80.regs.pc).toBe(2);
+        zat.run();
+        expect(zat.z80.regs.a).toBe(2);
+    });
+
+    it('should get and set flags', function () {
+        zat.z80.regs.f = 0;
+        zat.flags.Z = 1;
+        zat.flags.C = true;
+        expect(zat.z80.regs.f).toBe(0x41);
+        expect(zat.flags.Z).toBe(1);
+        expect(zat.flags.S).toBe(0);
+        expect(`${zat.flags}`).toBe('.Z.....C');
+        zat.flags.Z = 0;
+        expect(zat.z80.regs.f).toBe(0x01);
+        zat.altFlags.S = 1;
+        expect(zat.z80.regs.afPrime).toBe(0x0080);
+    });
+
+    it('should handle an interrupt', function () {
+        zat.compile(`
+    jp start
+    section int
+    org $38
+    ld b,$42
+    ei
+    ret
+    section main
+    org $100
+start:
+    ld sp,$ff00
+    im 1
+    ei
+    halt
+    ld a,b
+    halt
+        `);
+
+        zat.run('start');
+        zat.interrupt();
+        zat.run();
+        expect(zat.z80.regs.a).toBe(0x42);
+    });
+
+    it('should count T-states', function () {
+        zat.compile(`
+start:
+    ld a,5
+    add a,(ix+0)
+    halt
+        `);
+        const [count, tStates] = zat.run('start');
+        expect(count).toBe(3);
+        expect(tStates).toBe(7 + 19 + 4);
     });
 
     it('should show coverage', function () {
@@ -348,7 +455,7 @@ subroutine:
         `);
 
         let [count, tStates, coverage] = zat.run('start');
-        expect(zat.z80.a).toBe(6);
+        expect(zat.z80.regs.a).toBe(6);
         zat.showCoverage(prog, coverage);
     });
 });

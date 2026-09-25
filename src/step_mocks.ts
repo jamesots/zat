@@ -1,5 +1,5 @@
 import { Zat, StepResponse } from './zat';
-import { InstructionType } from './z80/Z80';
+import { InstructionType } from './instruction_type';
 
 export class StepMock {
     private mocks: AbstractStepMock[] = [];
@@ -40,20 +40,23 @@ abstract class AbstractStepMock {
 }
 
 class FakeCallStepMock extends AbstractStepMock {
-    public constructor(private addr, private func: () => void) {
+    public constructor(
+        private addr,
+        private func: () => void
+    ) {
         super();
     }
 
     public onStep(zat: Zat, pc: number): StepResponse {
         if (
             pc === this.addr &&
-            (zat.z80.lastInstruction === InstructionType.CALL ||
-                zat.z80.lastInstruction === InstructionType.INT ||
-                zat.z80.lastInstruction === InstructionType.RST)
+            (zat.lastInstruction === InstructionType.CALL ||
+                zat.lastInstruction === InstructionType.INT ||
+                zat.lastInstruction === InstructionType.RST)
         ) {
             this.func();
-            zat.z80.pc = zat.z80.popWord();
-            zat.z80.lastInstruction = InstructionType.RET;
+            zat.z80.regs.pc = zat.z80.popWord();
+            zat.lastInstruction = InstructionType.RET;
             return StepResponse.SKIP;
         }
         return StepResponse.RUN;
@@ -64,7 +67,10 @@ class FakeCallStepMock extends AbstractStepMock {
 }
 
 class OnStepMock extends AbstractStepMock {
-    public constructor(private addr, private func: () => StepResponse) {
+    public constructor(
+        private addr,
+        private func: () => StepResponse
+    ) {
         super();
     }
 

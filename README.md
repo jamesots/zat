@@ -13,7 +13,6 @@ The idea is that you can do something like this:
         start:
             ld a,0
             halt
-            org 20
         newstart:
             ld a,$12
             nop
@@ -24,10 +23,15 @@ The idea is that you can do something like this:
         `)
         zat.setBreakpoint('breakhere');
         zat.run('newstart');
-        expect(zat.z80.a).toBe(0x12);
+        expect(zat.z80.regs.a).toBe(0x12);
+        expect(zat.flags.Z).toBe(0);
     });
 
-This compiles a block of Z80 code, and then runs it up to the breakpoint, and then checks that a register is correct. I'm using it in Jasmine; I imagine it would also work just fine in Mocha.
+This compiles a block of Z80 code, and then runs it up to the breakpoint, and then checks that a register is correct. I'm using it in Jasmine.
+
+The registers are in `zat.z80.regs` (`a`, `f`, `bc`, `hl`, `afPrime`, `ix`, `sp`, `pc` etc.), and
+`zat.flags` gives the flags in F as 0 or 1 (`zat.flags.Z`, `zat.flags.C` etc.), which can also be
+set. `zat.altFlags` does the same for F'.
 
 You can also load data directly into memory:
 
@@ -61,16 +65,18 @@ use an IoSpy to respond to IN instructions:
     it('should read a character', function() {
         zat.compileFile('spec/test.z80');
 
-        let ioSpy = new IoSpy().returnValues([[9, 0xff], [9, 0xff], [9, 0xff], [9, 0], [8, 65]]);
+        let ioSpy = new IoSpy(zat).onIn([9, '\xff\xff\xff\0'], [8, 65]);
         zat.onIoRead = ioSpy.readSpy();
-        zat.z80.sp = 0xFF00;
+        zat.z80.regs.sp = 0xFF00;
         zat.call('read_char');
-        expect(zat.z80.a).toEqual(65);
+        expect(zat.z80.regs.a).toEqual(65);
         expect(ioSpy).toBeComplete();
     });
 
-I'm using z80asm from z88dk (https://github.com/z88dk/z88dk) to compile the code, and a modified version
-of Z80.js (https://github.com/DrGoldfire/Z80.js) to run the code.
+I'm using z80asm from z88dk (https://github.com/z88dk/z88dk) to compile the code, and
+Lawrence Kesteloot's z80-emulator (https://github.com/lkesteloot/trs80) to run the code. The
+emulator passes the FUSE emulator's Z80 tests, including the undocumented instructions and flags,
+and counts T-states. It's copied into `src/vendor`; see the README there for details.
 
 z80asm needs to be installed. By default zat runs `z88dk.z88dk-z80asm` (the name of the snap
 version); set the `ZAT_Z80ASM` environment variable, or pass `{ z80asm: 'z80asm' }` to
@@ -95,12 +101,12 @@ Use
 ===
 
 To use this in a project, you need to install these npm packages as dev-dependencies:
- 
+
  * zat
  * typescript
  * jasmine
- * jasmine-ts
  * @types/jasmine
+ * @types/node
 
 Example:
 
@@ -108,18 +114,32 @@ Example:
 mkdir my-project
 cd my-project
 npm init
-npm i -D zat typescript jasmine jasmine-ts @types/jasmine
+npm i -D zat typescript jasmine @types/jasmine @types/node
 ./node_modules/.bin/jasmine init
 ```
-Then add this into your package.json:
+Compile the specs with `tsc` and run the compiled JavaScript with jasmine. Create a
+`spec/tsconfig.json`:
+```
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "outDir": "./build",
+    "types": ["node", "jasmine"]
+  },
+  "include": ["**/*.ts"]
+}
+```
+Set `"spec_dir": "spec/build"` and `"spec_files": ["**/*[sS]pec.js"]` in
+`spec/support/jasmine.json`, and add this into your package.json:
 ```
 "scripts": {
-    "test": "jasmine-ts 'spec/**/*.spec.ts'"
+    "test": "tsc -p spec && jasmine"
 }
 ```
 Now you can create a test spec in the spec directory. Something like this:
 ```
-import { Zat, IoSpy, StepMock, customMatchers, stringToBytes, hex16, Compiler, CompiledProg, Z80 } from 'zat';
+import { Zat, IoSpy, customMatchers, stringToBytes, hex16, Compiler, CompiledProg, Z80 } from 'zat';
 
 describe('things', function() {
     let zat: Zat;
@@ -134,7 +154,7 @@ describe('things', function() {
     it('should do something', function() {
         zat.compileFile('test.z80');
         zat.run(0);
-        expect(zat.z80.a).toBe(5);
+        expect(zat.z80.regs.a).toBe(5);
     })
 });
 ```

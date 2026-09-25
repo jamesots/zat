@@ -29,6 +29,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      z80-test:
+        specifier: 2.0.1
+        version: 2.0.1
 
 packages:
 
@@ -236,6 +239,14 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
+  z80-base@2.0.1:
+    resolution: {integrity: sha512-Zflx/2fATJ1cMXiiqBFbOadHvC12Yg12CHCiEGGaOnkA18SxRVCiBDpNRuYm7MGGHdBlDTwdlDS8Ga4OC0G88A==}
+    deprecated: No longer published to npm; see https://github.com/lkesteloot/trs80
+
+  z80-test@2.0.1:
+    resolution: {integrity: sha512-5lkDWHP96gjvXaIopPAy4QQp4yUkNDGdCnTjzXyC5M6yG8xgEKwQQDBOxlBrXVUDucc69I2h0BPIGbpnP+IUUQ==}
+    deprecated: No longer published to npm; see https://github.com/lkesteloot/trs80
+
 snapshots:
 
   '@jasminejs/reporters@1.1.0': {}
@@ -384,3 +395,9 @@ snapshots:
 
   yaml@2.9.1:
     optional: true
+
+  z80-base@2.0.1: {}
+
+  z80-test@2.0.1:
+    dependencies:
+      z80-base: 2.0.1
