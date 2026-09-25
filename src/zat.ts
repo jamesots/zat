@@ -487,25 +487,41 @@ F': ${this.altFlags}
         )}${hex8(this.memory[sp])} PC:${hex16(regs.pc)}`;
     }
 
-    public dumpMemory(start: number, length: number) {
-        let line = '';
-        let ascii = '';
-        for (let addr = start; addr < start + length; addr++) {
-            line += `${hex8(this.memory[addr])} `;
-            if (this.memory[addr] > 31 && this.memory[addr] < 127) {
-                ascii += String.fromCharCode(this.memory[addr]);
-            } else {
-                ascii += '·';
+    /**
+     * Format memory in hex and ASCII, in rows of 16 bytes which start at
+     * multiples of 16. Bytes before start or after the end in the first and
+     * last rows are left blank.
+     */
+    public formatMemory(start: number | string, length: number): string {
+        const first = this.getAddress(start);
+        const end = Math.min(first + length, 0x10000);
+        const rows = [];
+        for (let row = first & ~0xf; row < end; row += 16) {
+            let hex = '';
+            let ascii = '';
+            for (let addr = row; addr < row + 16; addr++) {
+                if (addr < first || addr >= end) {
+                    hex += '   ';
+                    ascii += ' ';
+                } else {
+                    const value = this.memory[addr];
+                    hex += `${hex8(value)} `;
+                    ascii +=
+                        value > 31 && value < 127
+                            ? String.fromCharCode(value)
+                            : '·';
+                }
             }
-            if ((addr + 1) % 16 === 0) {
-                line = ' '.repeat(48 - line.length) + line;
-                ascii = ' '.repeat(16 - ascii.length) + ascii;
-                line = hex16(addr - 15) + ' ' + line;
-                console.log(`${line} ${ascii}`);
-                line = '';
-                ascii = '';
-            }
+            rows.push(`${hex16(row)} ${hex} ${ascii}`.trimEnd());
         }
+        return rows.join('\n');
+    }
+
+    /**
+     * Print memory in hex and ASCII. See formatMemory.
+     */
+    public dumpMemory(start: number | string, length: number) {
+        console.log(this.formatMemory(start, length));
     }
 
     /**

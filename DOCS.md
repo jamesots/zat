@@ -933,9 +933,16 @@ These methods print to the console, which can help when a test isn't doing what 
   of the stack on one line, as a string.
 - **`zat.logSteps(on = true)`** prints the registers before each instruction is executed, with
   the name of the symbol at that address, if there is one. `logSteps(false)` turns it off.
-- **`zat.dumpMemory(start, length)`** prints memory in hex and ASCII, in rows of 16 bytes aligned
-  to multiples of 16. Only complete rows are printed, so use a `start` and `length` that are
-  multiples of 16.
+- **`zat.dumpMemory(start, length)`** prints `length` bytes of memory from `start`, which is an
+  address or a symbol, in hex and ASCII. Rows are 16 bytes, starting at multiples of 16, and bytes
+  outside the range are left blank:
+
+  ```
+  1000             48 65 6c 6c 6f 2c 20 77 6f 72 6c 64      Hello, world
+  1010 21                                               !
+  ```
+
+- **`zat.formatMemory(start, length)`** returns what `dumpMemory()` prints, as a string.
 - **`prog.dumpList()`** prints the listing of a `CompiledProg`.
 
 ## Utility functions

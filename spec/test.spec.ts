@@ -218,6 +218,27 @@ start:
         );
     });
 
+    it('should format memory', function () {
+        zat.load('Hello, world!\0\x01\x7f', 0x1004);
+        // Each byte is 3 characters in the hex, and 1 in the ASCII
+        const blank = (bytes: number) => ' '.repeat(bytes * 3);
+        expect(zat.formatMemory(0x1004, 8)).toBe(
+            `1000 ${blank(4)}48 65 6c 6c 6f 2c 20 77 ${blank(4)}     Hello, w`
+        );
+        expect(zat.formatMemory(0x1004, 16)).toBe(
+            `1000 ${blank(4)}48 65 6c 6c 6f 2c 20 77 6f 72 6c 64      Hello, world\n` +
+                `1010 21 00 01 7f ${blank(12)} !···`
+        );
+        expect(zat.formatMemory(0x1000, 16)).toBe(
+            '1000 00 00 00 00 48 65 6c 6c 6f 2c 20 77 6f 72 6c 64  ····Hello, world'
+        );
+        // Stops at the end of memory
+        expect(zat.formatMemory(0xfffe, 4)).toBe(
+            `fff0 ${blank(14)}00 00  ${' '.repeat(14)}··`
+        );
+        expect(zat.formatMemory(0x1000, 0)).toBe('');
+    });
+
     it('should include unused constants in the symbols', function () {
         const prog = zat.compile(`
 equ_const: equ $10
