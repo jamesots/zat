@@ -51,6 +51,8 @@ New:
 - Mocks can be removed: `mockCall()`, `mockStep()` and `mockAllSteps()` return
   a function which removes the mock, `zat.removeMocks()` removes the mocks
   for an address, and `zat.clearMocks()` removes all mocks.
+- A `mockCall()` replaces any earlier `mockCall()` for the same address,
+  instead of being ignored.
 
 Fixed:
 

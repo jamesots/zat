@@ -644,6 +644,9 @@ zat.call('ask_yes_no');
 This is useful for replacing routines that talk to hardware, or which are slow, or which are
 tested separately.
 
+A later `mockCall()` for the same address replaces the earlier one, so a test can change a mock
+added in a `beforeEach`.
+
 ### `zat.mockStep(addr, func)`
 
 Calls `func` before the instruction at `addr` is executed. `func` returns a `StepResponse`:

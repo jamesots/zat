@@ -532,6 +532,8 @@ F': ${this.altFlags}
      * func will only be executed as a result of a CALL, RST or interrupt,
      * not if execution passes to the address in any other way.
      *
+     * This replaces any earlier mockCall for the same address.
+     *
      * Returns a function which removes the mock.
      */
     public mockCall(addr: number | string, func: () => void): () => void {

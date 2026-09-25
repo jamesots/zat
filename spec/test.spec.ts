@@ -485,6 +485,22 @@ other:
             expect(zat.z80.regs.a).toBe(8);
         });
 
+        it('should replace an earlier mockCall for the same address', function () {
+            const removeFirst = zat.mockCall('subroutine', () => {
+                zat.z80.regs.a += 10;
+            });
+            zat.mockCall('subroutine', () => {
+                zat.z80.regs.a += 20;
+            });
+            zat.call('start');
+            expect(zat.z80.regs.a).toBe(27);
+
+            // Removing the replaced mock doesn't remove the new one
+            removeFirst();
+            zat.call('start');
+            expect(zat.z80.regs.a).toBe(27);
+        });
+
         it('should remove the mocks for an address', function () {
             zat.mockCall('subroutine', () => {
                 zat.z80.regs.a += 10;

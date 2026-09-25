@@ -21,8 +21,16 @@ export class StepMock {
         return StepResponse.RUN;
     }
 
+    /**
+     * Replace calls to an address. This replaces any earlier fake call for
+     * the same address.
+     */
     public setFakeCall(pc: number | string, func: () => void) {
-        return this.add(new FakeCallStepMock(this.zat.getAddress(pc), func));
+        const addr = this.zat.getAddress(pc);
+        this.mocks = this.mocks.filter(
+            (mock) => !(mock instanceof FakeCallStepMock && mock.addr === addr)
+        );
+        return this.add(new FakeCallStepMock(addr, func));
     }
 
     public setOnStep(pc: number | string, func: () => StepResponse) {
