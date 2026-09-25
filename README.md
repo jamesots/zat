@@ -6,6 +6,8 @@ for Z80 programmes.
 
 **WARNING:** This is a work in progress, and the API is likely to change.
 
+See [DOCS.md](DOCS.md) for complete documentation.
+
 The idea is that you can do something like this:
 
     it('should work', function() {
