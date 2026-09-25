@@ -167,8 +167,8 @@ export class Zat {
      * Compile some Z80 code, using z80asm.
      *
      * The code is loaded at its origin (set with an 'org' directive, or 0 if
-     * there isn't one), unless start is given, in which case the first byte
-     * is loaded at start.
+     * there isn't one), unless loadAt is given, in which case the first byte
+     * is loaded at loadAt.
      *
      * E.g. compile("org 5\n ret") would load "c9" at address 5,
      * compile("ret") would load "c9" at address 0,
@@ -177,19 +177,22 @@ export class Zat {
      * Note that z80asm applies an 'org' to the whole section it's in. To put
      * code at more than one address, put each part in its own section.
      */
-    public compile(code: string, start?: number | string) {
+    public compile(code: string, loadAt?: number | string) {
         let compiled = new Compiler().compile(code);
-        this.loadProg(compiled, start);
+        this.loadProg(compiled, loadAt);
         return compiled;
     }
 
-    public loadProg(prog: CompiledProg, start?: number | string) {
+    /**
+     * Load a compiled program at its origin, or at loadAt if it's given.
+     */
+    public loadProg(prog: CompiledProg, loadAt?: number | string) {
         for (const symbol in prog.symbols) {
             this.symbols[symbol] = prog.symbols[symbol];
         }
         let offset = 0;
-        if (start !== undefined) {
-            offset = this.getAddress(start) - prog.origin;
+        if (loadAt !== undefined) {
+            offset = this.getAddress(loadAt) - prog.origin;
             this.load(prog.data, prog.origin + offset);
         } else {
             for (const segment of prog.segments) {
@@ -209,11 +212,12 @@ export class Zat {
     }
 
     /**
-     * Compile some Z80 code from a file, using z80asm.
+     * Compile some Z80 code from a file, using z80asm, and load it at its
+     * origin, or at loadAt if it's given.
      */
-    public compileFile(filename: string, start?: number | string) {
+    public compileFile(filename: string, loadAt?: number | string) {
         let compiled = new Compiler().compileFile(filename);
-        this.loadProg(compiled, start);
+        this.loadProg(compiled, loadAt);
         return compiled;
     }
 

@@ -131,7 +131,7 @@ until it returns.
 
 ## Assembling code
 
-### `zat.compile(code, start?)`
+### `zat.compile(code, loadAt?)`
 
 Assembles a string of Z80 code, loads it into memory, and adds its symbols to
 [`zat.symbols`](#symbols). Returns a [`CompiledProg`](#compiledprog).
@@ -150,7 +150,7 @@ zat.run('start');
 expect(zat.z80.regs.a).toBe(10);
 ```
 
-The code is loaded at its origin: the address given by `org`, or 0 if there's no `org`. If `start`
+The code is loaded at its origin: the address given by `org`, or 0 if there's no `org`. If `loadAt`
 is given, the code is loaded there instead. It can be an address or a symbol. The code isn't
 reassembled, so any addresses in it are still the ones for its origin.
 
@@ -173,7 +173,7 @@ z80asm failed: code:3: error: syntax error
 Code assembled with `compile()` isn't included in [coverage](#coverage), as it's part of the test
 rather than the code being tested.
 
-### `zat.compileFile(filename, start?)`
+### `zat.compileFile(filename, loadAt?)`
 
 Like `compile()`, but assembles a file. `include` files are looked for relative to the file's
 directory, as well as the current directory. Returns a `CompiledProg`.
@@ -182,9 +182,9 @@ directory, as well as the current directory. Returns a `CompiledProg`.
 zat.compileFile('src/maths.z80');
 ```
 
-### `zat.loadProg(prog, start?)`
+### `zat.loadProg(prog, loadAt?)`
 
-Loads a `CompiledProg` into memory, and adds its symbols to `zat.symbols`. `start` works as it does
+Loads a `CompiledProg` into memory, and adds its symbols to `zat.symbols`. `loadAt` works as it does
 for `compile()`.
 
 Assembling a file once and loading it into a new `Zat` for each test saves reassembling it (though
