@@ -186,6 +186,26 @@ declare module 'vitest' {
 }
 ```
 
+In watch mode, Vitest re-runs tests when files they import change. Z80 source files are read by
+zat rather than imported, so Vitest won't re-run the tests when you edit one, unless you tell it
+to in `vitest.config.mts`:
+```
+import { configDefaults, defineConfig } from 'vitest/config';
+
+export default defineConfig({
+    test: {
+        forceRerunTriggers: [
+            ...configDefaults.forceRerunTriggers,
+            '**/*.z80',
+            '**/*.asm',
+            '**/*.inc',
+        ],
+    },
+});
+```
+This re-runs all the tests when any Z80 source file changes. Only the changed code is assembled
+again, as the rest comes from the cache.
+
 Coverage
 ========
 
