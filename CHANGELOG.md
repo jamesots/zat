@@ -45,6 +45,8 @@ New:
   `interruptEvery` and `interruptNonMaskable` run options to raise them
   regularly. The result of `run()` includes the number of interrupts.
 - `zat.step()` to execute a single instruction.
+- The `returnAddress` option of `call()` pushes a return address onto the
+  stack before calling the routine.
 - Assembled code is cached, in memory and on disk, which makes running tests
   much faster when the code hasn't changed.
 - Coverage of Z80 source files can be written to an lcov file, using

@@ -415,6 +415,26 @@ subroutine:
         expect(zat.z80.regs.a).toBe(16);
     });
 
+    it('should push a return address for call', function () {
+        zat.compile(`
+start:
+    pop hl
+    push hl
+    ret
+        `);
+        const { instructions } = zat.call('start', { returnAddress: 0x1234 });
+        expect(instructions).toBe(3);
+        expect(zat.z80.regs.hl).toBe(0x1234);
+        expect(zat.z80.regs.pc).toBe(0x1234);
+        expect(zat.z80.regs.sp).toBe(0xff00);
+        expect(zat.getMemory(0xfefe, 2)).toEqual([0x34, 0x12]);
+
+        zat.call('start', { returnAddress: 'start', sp: 0x8000 });
+        expect(zat.z80.regs.hl).toBe(zat.getAddress('start'));
+        expect(zat.z80.regs.pc).toBe(zat.getAddress('start'));
+        expect(zat.z80.regs.sp).toBe(0x8000);
+    });
+
     it('should not intercept a call if there is no call statement', function () {
         zat.compile(`
 start:

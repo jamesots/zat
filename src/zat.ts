@@ -269,12 +269,21 @@ export class Zat {
     }
 
     /**
-     * Calls run, with 'call' set to true in runOptions.
+     * Calls run, with 'call' set to true in runOptions, so that it stops
+     * when the routine returns.
+     *
+     * The stack pointer is set to runOptions.sp, or defaultCallSp, if either
+     * is set. Then runOptions.returnAddress, if it's set, is pushed onto the
+     * stack, as a CALL instruction would, so that the PC is set to it when
+     * the routine returns.
      */
     public call(start?: number | string, runOptions: RunOptions = {}) {
         const sp = runOptions.sp ?? this.defaultCallSp;
         if (sp !== undefined) {
             this.z80.regs.sp = this.getAddress(sp);
+        }
+        if (runOptions.returnAddress !== undefined) {
+            this.z80.pushWord(this.getAddress(runOptions.returnAddress));
         }
         return this.run(start, { ...runOptions, call: true });
     }
@@ -615,7 +624,12 @@ export interface RunOptions {
     interruptNonMaskable?: boolean;
     steps?: number;
     call?: boolean;
+    /** For call(): the stack pointer to start with */
     sp?: number | string;
+    /**
+     * For call(): a return address to push onto the stack before starting
+     */
+    returnAddress?: number | string;
     coverage?: Coverage;
 }
 

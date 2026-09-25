@@ -492,6 +492,7 @@ expect(tStates).toBeLessThan(70000);
 | `steps`                | The maximum number of instructions to execute. Defaults to 10,000,000.               |
 | `call`                 | Stop when the routine returns. `call()` sets this.                                   |
 | `sp`                   | Used by `call()`: the stack pointer to start with.                                   |
+| `returnAddress`        | Used by `call()`: a return address to push onto the stack before starting.          |
 | `coverage`             | A `coverage` object from an earlier run, to add this run's counts to.                |
 | `interruptEvery`       | Raise an interrupt every this many T-states. See [Interrupts](#interrupts).          |
 | `interruptNonMaskable` | Make the interrupts raised by `interruptEvery` non-maskable.                         |
@@ -502,11 +503,22 @@ Runs a subroutine until it returns, as if it had been called with `CALL`. Takes 
 and returns the same result as `run()`.
 
 zat notes the stack pointer when it starts, and stops when a `RET` (or `RETI` or `RETN`) leaves the
-stack pointer 2 higher than that: the point at which the routine returns to its caller. zat doesn't
-push a return address, so after the `RET`, the PC is whatever word was at the top of the stack.
+stack pointer 2 higher than that: the point at which the routine returns to its caller. After the
+`RET`, the PC is whatever word was at the top of the stack.
+
+The `returnAddress` option pushes a return address onto the stack before starting, as a `CALL`
+instruction would, so the PC is set to it when the routine returns. It can be an address or a
+symbol. This is useful if the routine looks at its return address, e.g. to read parameters that
+follow the `CALL`, or to check where it returns to:
+
+```ts
+zat.call('print_inline', { returnAddress: 'message' });
+expect(zat.z80.regs.pc).toBe(zat.getAddress('after_message'));
+```
 
 The stack pointer is set before running, if an `sp` option is given, or if `zat.defaultCallSp` is
-set. Both can be addresses or symbols. Setting `defaultCallSp` in a `beforeEach` saves setting it
+set. Both can be addresses or symbols. The return address, if there is one, is pushed after the
+stack pointer is set. Setting `defaultCallSp` in a `beforeEach` saves setting it
 in every test:
 
 ```ts
