@@ -8,6 +8,8 @@ Breaking changes:
   installed. Its syntax differs from maz's in places, e.g. `macro`/`endm`, and
   double quoted strings. An `org` applies to the whole section it's in, so use
   sections to put code at different addresses.
+  zat declares constants `public`, so that ones which aren't used are still
+  in the symbols.
 - The Z80.js emulator is replaced with z80-emulator, which passes the FUSE
   tests. Z80.js gave wrong results for some documented instructions, such as
   `rlc (ix+d)` and `add ix,sp`.

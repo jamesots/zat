@@ -155,7 +155,6 @@ extrastart:
         zat.compile(`
 ft245: equ 8
 start:
-    ld b,ft245 ; z80asm omits unused constants from the symbols
     ld a,1
     out (5),a
     ld a,2
@@ -179,6 +178,34 @@ start:
         expect(() => zat.call('start')).toThrow(
             'Expected OUT to port 08 (ft245) but got port 06'
         );
+    });
+
+    it('should include unused constants in the symbols', function () {
+        const prog = zat.compile(`
+equ_const: equ $10
+.dot_const equ $11
+eq_const = $12
+defc defc1 = $13, defc2 = $14 ; comment = 1
+if 0
+false_const: equ $15
+endif
+include "spec/constants.inc"
+used_const: equ 1
+start:
+    ld a,used_const
+    ret
+        `);
+        expect(zat.symbols).toEqual({
+            equ_const: 0x10,
+            dot_const: 0x11,
+            eq_const: 0x12,
+            defc1: 0x13,
+            defc2: 0x14,
+            inc_const: 0x33,
+            used_const: 1,
+            start: 0,
+        });
+        expect(prog.data).toEqual(Buffer.from([0x3e, 0x01, 0xc9]));
     });
 
     it('should read and write', function () {

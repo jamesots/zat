@@ -92,38 +92,58 @@ export class Compiler {
         try {
             const base = 'prog';
             const asmFile = path.join(dir, `${base}.asm`);
-            fs.writeFileSync(asmFile, code);
+            // z80asm leaves constants which aren't used out of the map file,
+            // unless they're public, so make them public
+            const constants = findConstants(code.split('\n'));
+            fs.writeFileSync(asmFile, makePublic(code, constants));
             const asmFileRegExp = new RegExp(escapeRegExp(asmFile), 'g');
-            try {
-                execFileSync(
-                    this.z80asm,
-                    [
-                        '-b',
-                        '-l',
-                        '-m',
-                        `-I${path.resolve(includeDir)}`,
-                        ...this.args,
-                        asmFile,
-                    ],
-                    { stdio: 'pipe' }
+            const assemble = () => {
+                try {
+                    execFileSync(
+                        this.z80asm,
+                        [
+                            '-b',
+                            '-l',
+                            '-m',
+                            `-I${path.resolve(includeDir)}`,
+                            ...this.args,
+                            asmFile,
+                        ],
+                        { stdio: 'pipe' }
+                    );
+                } catch (e) {
+                    const output = `${e.stderr || ''}${e.stdout || ''}`.trim();
+                    throw new Error(
+                        `z80asm failed: ${output || e.message}`.replace(
+                            asmFileRegExp,
+                            name
+                        )
+                    );
+                }
+                const map = readMap(path.join(dir, `${base}.map`));
+                const list = fs
+                    .readFileSync(path.join(dir, `${base}.lis`))
+                    .toString()
+                    .replace(asmFileRegExp, name)
+                    .split('\n');
+                return { map, list };
+            };
+
+            let { map, list } = assemble();
+            // The listing also has the lines of any included files. If they
+            // have constants which are missing, assemble again.
+            const missing = findConstants(listingSource(list)).filter(
+                (constant) => !(constant.toLowerCase() in map.symbols)
+            );
+            if (missing.length > 0) {
+                fs.writeFileSync(
+                    asmFile,
+                    makePublic(code, [...constants, ...missing])
                 );
-            } catch (e) {
-                const output = `${e.stderr || ''}${e.stdout || ''}`.trim();
-                throw new Error(
-                    `z80asm failed: ${output || e.message}`.replace(
-                        asmFileRegExp,
-                        name
-                    )
-                );
+                ({ map, list } = assemble());
             }
 
-            const map = readMap(path.join(dir, `${base}.map`));
             const segments = readSegments(dir, base, map.heads);
-            const list = fs
-                .readFileSync(path.join(dir, `${base}.lis`))
-                .toString()
-                .replace(asmFileRegExp, name)
-                .split('\n');
             const lines = parseListing(list, map.heads);
             const [data, origin] = combineSegments(segments);
             return new CompiledProg(
@@ -269,6 +289,61 @@ function parseListing(
         });
     }
     return lines;
+}
+
+/**
+ * The source code lines in a listing. This includes lines from included
+ * files, and lines which weren't assembled because of if statements.
+ */
+function listingSource(list: string[]): string[] {
+    return list
+        .map((text) => /^\s*\d+\s+(.*)$/.exec(text)?.[1])
+        .filter((source) => source !== undefined);
+}
+
+/**
+ * Find the names of constants defined with equ, defc or =, in some lines of
+ * source code.
+ */
+function findConstants(lines: string[]): string[] {
+    const constants = new Set<string>();
+    for (const line of lines) {
+        const source = line.replace(/;.*$/, '');
+        const equ = /^\s*\.?([A-Za-z_]\w*)\s*:?\s*(?:equ\b|=(?!=))/i.exec(
+            source
+        );
+        if (equ) {
+            constants.add(equ[1]);
+            continue;
+        }
+        const defc = /^\s*defc\s+(.*)$/i.exec(source);
+        if (defc) {
+            for (const [, constant] of defc[1].matchAll(
+                /(?:^|,)\s*([A-Za-z_]\w*)\s*=/g
+            )) {
+                constants.add(constant);
+            }
+        }
+    }
+    return [...constants];
+}
+
+/**
+ * Add public declarations for constants to the end of some code. They're in
+ * ifdefs, as a constant may be in an if statement which wasn't assembled.
+ */
+function makePublic(code: string, constants: string[]): string {
+    if (constants.length === 0) {
+        return code;
+    }
+    return [
+        code,
+        '; Added by zat, so that unused constants are in the map file',
+        ...constants.map(
+            (constant) => `ifdef ${constant}\npublic ${constant}\nendif`
+        ),
+        '',
+    ].join('\n');
 }
 
 function escapeRegExp(str: string) {
