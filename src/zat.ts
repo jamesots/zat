@@ -13,7 +13,7 @@ export {
     ListingLine,
     Segment,
 } from './compiler';
-export { IoSpy, IoSpyError } from './io_spies';
+export { IoSpy, IoSpyError, Port, IoValue, IoExpectation } from './io_spies';
 import { StepMock } from './step_mocks';
 export { customMatchers } from './custom_matchers';
 
@@ -53,37 +53,37 @@ export class Zat {
     /**
      * If ioRead has been set, it will be called when an IO read occurrs.
      */
-    public onIoRead: (port: number) => number;
+    public onIoRead?: (port: number) => number;
 
     /**
      * If ioWrite has been set, it will be called when an IO write occurrs.
      */
-    public onIoWrite: (port: number, value: number) => void;
+    public onIoWrite?: (port: number, value: number) => void;
 
     /**
      * If memRead has been set, it will be called when a memory read occurrs.
      * If a number is returned, that value will be used. If undefined is returned,
      * the value from the internal memory will be used.
      */
-    public onMemRead: (addr: number) => number;
+    public onMemRead?: (addr: number) => number | undefined;
 
     /**
      * If memWrite has been set, it will be called when a memory write occurrs.
      * If true is returned then no further action is taken. If false is returned,
      * the value will be written to the internal memory.
      */
-    public onMemWrite: (addr: number, value: number) => boolean;
+    public onMemWrite?: (addr: number, value: number) => boolean;
 
     /**
-     * The symbol table, which is created by z80asm. All symbols
-     * are in lower case.
+     * The symbol table, which is created by z80asm. Symbols are
+     * case-sensitive, as they are in z80asm.
      */
     public symbols: { [addr: string]: number } = {};
 
     /**
      * When using call(), set the stack pointer to this value before starting, if set
      */
-    public defaultCallSp: number | string;
+    public defaultCallSp?: number | string;
 
     constructor() {
         this.hal = {
@@ -196,11 +196,18 @@ export class Zat {
         this.memory.set(mem, this.getAddress(start));
     }
 
-    public getAddress(addr: number | string) {
+    public getAddress(addr: number | string): number {
         if (typeof addr === 'string') {
-            const address = this.symbols[addr.toLowerCase()];
-            if (typeof address === 'undefined') {
-                throw `Symbol "${addr}" not found`;
+            const address = this.symbols[addr];
+            if (address === undefined) {
+                const other = Object.keys(this.symbols).find(
+                    (symbol) => symbol.toLowerCase() === addr.toLowerCase()
+                );
+                throw new Error(
+                    `Symbol "${addr}" not found${
+                        other !== undefined ? ` (did you mean "${other}"?)` : ''
+                    }`
+                );
             }
             return address;
         }
@@ -219,14 +226,12 @@ export class Zat {
     /**
      * Calls run, with 'call' set to true in runOptions.
      */
-    public call(start?: number | string, runOptions?: RunOptions) {
-        runOptions = runOptions || {};
-        runOptions.call = true;
-        const sp = runOptions.sp || this.defaultCallSp;
-        if (typeof sp !== 'undefined') {
+    public call(start?: number | string, runOptions: RunOptions = {}) {
+        const sp = runOptions.sp ?? this.defaultCallSp;
+        if (sp !== undefined) {
             this.z80.regs.sp = this.getAddress(sp);
         }
-        return this.run(start, runOptions);
+        return this.run(start, { ...runOptions, call: true });
     }
 
     /**
@@ -274,9 +279,10 @@ export class Zat {
      * is then called without a start address, execution continues after
      * the HALT.
      *
-     * Returns the number of instructions executed and the number of T-states
+     * Returns the number of instructions executed, the number of T-states,
+     * and the coverage.
      */
-    public run(start?: number | string, runOptions?: RunOptions) {
+    public run(start?: number | string, runOptions?: RunOptions): RunResult {
         runOptions = runOptions || {};
         const regs = this.z80.regs;
         const startSp = (regs.sp + 2) & 0xffff;
@@ -333,26 +339,19 @@ export class Zat {
             }
             stepResponse = StepResponse.RUN;
         }
-        return [count, tStates, coverage];
+        return { instructions: count, tStates, coverage };
     }
 
-    saveMemory() {
-        const savedSymbols = {};
-        for (const symbol in this.symbols) {
-            savedSymbols[symbol] = this.symbols[symbol];
-        }
+    public saveMemory(): SavedMemory {
         return {
             memory: new Uint8Array(this.memory),
-            symbols: savedSymbols,
+            symbols: { ...this.symbols },
         };
     }
 
-    loadMemory(savedMemory) {
+    public loadMemory(savedMemory: SavedMemory) {
         this.memory.set(savedMemory.memory);
-        this.symbols = {};
-        for (const symbol in savedMemory.symbols) {
-            this.symbols[symbol] = savedMemory.symbols[symbol];
-        }
+        this.symbols = { ...savedMemory.symbols };
     }
 
     public showRegisters() {
@@ -452,7 +451,7 @@ F': ${this.altFlags}
     /**
      * Like mockStep, except that func is executed for every step.
      */
-    public mockAllSteps(func: (pc) => StepResponse) {
+    public mockAllSteps(func: (pc: number) => StepResponse) {
         this.stepMock.setOnAllSteps(func);
     }
 
@@ -492,6 +491,20 @@ export function stringToBytes(str: string): number[] {
 
 export interface Coverage {
     [address: number]: number;
+}
+
+export interface SavedMemory {
+    memory: Uint8Array;
+    symbols: { [symbol: string]: number };
+}
+
+export interface RunResult {
+    /** The number of instructions executed */
+    instructions: number;
+    /** The number of T-states taken */
+    tStates: number;
+    /** The number of times each address was executed */
+    coverage: Coverage;
 }
 
 export interface RunOptions {

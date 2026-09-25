@@ -112,9 +112,15 @@ export class Compiler {
                         { stdio: 'pipe' }
                     );
                 } catch (e) {
-                    const output = `${e.stderr || ''}${e.stdout || ''}`.trim();
+                    const error = e as Error & {
+                        stderr?: Buffer;
+                        stdout?: Buffer;
+                    };
+                    const output = `${error.stderr || ''}${
+                        error.stdout || ''
+                    }`.trim();
                     throw new Error(
-                        `z80asm failed: ${output || e.message}`.replace(
+                        `z80asm failed: ${output || error.message}`.replace(
                             asmFileRegExp,
                             name
                         )
@@ -133,7 +139,7 @@ export class Compiler {
             // The listing also has the lines of any included files. If they
             // have constants which are missing, assemble again.
             const missing = findConstants(listingSource(list)).filter(
-                (constant) => !(constant.toLowerCase() in map.symbols)
+                (constant) => !(constant in map.symbols)
             );
             if (missing.length > 0) {
                 fs.writeFileSync(
@@ -182,8 +188,8 @@ interface MapInfo {
  * newstart                        = $0020 ; addr, local, , prog, two, prog.asm:6
  */
 function readMap(filename: string): MapInfo {
-    const symbols = {};
-    const heads = {};
+    const symbols: { [symbol: string]: number } = {};
+    const heads: { [section: string]: number } = {};
     const text = fs.readFileSync(filename).toString();
     for (const line of text.split('\n')) {
         const match = /^(\S+)\s*=\s*\$([0-9a-fA-F]+)/.exec(line);
@@ -197,7 +203,7 @@ function readMap(filename: string): MapInfo {
         } else if (/^__.+_head$/.test(name)) {
             heads[name.slice(2, -5)] = value;
         } else if (!name.startsWith('__')) {
-            symbols[name.toLowerCase()] = value;
+            symbols[name] = value;
         }
     }
     return { symbols, heads };

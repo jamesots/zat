@@ -28,6 +28,17 @@ Breaking changes:
   format used by `expect.extend()` in Vitest and Jest, and `lib/matchers` has
   been removed; see the README for the matcher's type declaration.
 
+- `run()` and `call()` return `{ instructions, tStates, coverage }` instead of
+  an array.
+- Symbols are case-sensitive, as they are in z80asm, instead of being
+  lowercased. `getAddress()` throws an `Error` instead of a string, which
+  suggests the right symbol if only the case is different.
+- `IoSpy` compares all 16 bits of the port address if the expected port is
+  more than `$FF`.
+- `onIoRead`, `onIoWrite`, `onMemRead`, `onMemWrite` and `defaultCallSp` are
+  optional properties, and `onMemRead` can return `undefined`.
+- zat is compiled with `strict` on.
+
 New:
 
 - `zat.interrupt()` to trigger a maskable or non-maskable interrupt.

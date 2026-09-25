@@ -132,7 +132,7 @@ extrastart:
     it('should sound bell', function () {
         zat.loadProg(prog);
 
-        const values = [];
+        const values: [number, number][] = [];
         let count = 0;
         zat.onMemRead = (addr) => {
             if (addr == zat.getAddress('sound_bell1')) {
@@ -177,6 +177,44 @@ start:
         zat.onIoWrite = ioSpy.writeSpy();
         expect(() => zat.call('start')).toThrow(
             'Expected OUT to port 08 (ft245) but got port 06'
+        );
+    });
+
+    it('should have case-sensitive symbols', function () {
+        zat.compile(`
+Foo:
+    nop
+foo:
+    ret
+        `);
+        expect(zat.getAddress('Foo')).toBe(0);
+        expect(zat.getAddress('foo')).toBe(1);
+        expect(() => zat.getAddress('FOO')).toThrow(
+            new Error('Symbol "FOO" not found (did you mean "Foo"?)')
+        );
+        expect(() => zat.getAddress('bar')).toThrow(
+            new Error('Symbol "bar" not found')
+        );
+    });
+
+    it('should match 16-bit ports if the expected port is more than $FF', function () {
+        zat.compile(`
+keys: equ $fbfe
+start:
+    ld bc,keys
+    in a,(c)
+    ld b,$fd
+    in a,(c)
+    ret
+        `);
+        const ioSpy = new IoSpy(zat).onIn(['keys', 1], [0xfdfe, 2]);
+        zat.onIoRead = ioSpy.readSpy();
+        zat.call('start');
+        expect(ioSpy).toBeComplete();
+
+        zat.onIoRead = new IoSpy(zat).onIn([0xfbfe, 1], [0xfbfe, 2]).readSpy();
+        expect(() => zat.call('start')).toThrow(
+            'Expected IN from port fbfe but got port fdfe'
         );
     });
 
@@ -495,8 +533,8 @@ start:
     add a,(ix+0)
     halt
         `);
-        const [count, tStates] = zat.run('start');
-        expect(count).toBe(3);
+        const { instructions, tStates } = zat.run('start');
+        expect(instructions).toBe(3);
         expect(tStates).toBe(7 + 19 + 4);
     });
 
@@ -512,7 +550,7 @@ subroutine:
     ret
         `);
 
-        let [count, tStates, coverage] = zat.run('start');
+        const { coverage } = zat.run('start');
         expect(zat.z80.regs.a).toBe(6);
         zat.showCoverage(prog, coverage);
     });

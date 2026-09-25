@@ -4,8 +4,8 @@
         "module": "preserve",
         "noEmit": true,
         "types": ["node"],
-        "strict": false,
-        "noImplicitAny": false
+        "strict": true,
+        "noImplicitAny": true
     },
     "include": ["**/*.ts", "../src/**/*.ts", "../vitest.config.mts"]
 }

@@ -29,7 +29,7 @@ export class StepMock {
         return this;
     }
 
-    public setOnAllSteps(func: (pc) => StepResponse) {
+    public setOnAllSteps(func: (pc: number) => StepResponse) {
         this.mocks.push(new OnAllStepsMock(func));
         return this;
     }
@@ -41,7 +41,7 @@ abstract class AbstractStepMock {
 
 class FakeCallStepMock extends AbstractStepMock {
     public constructor(
-        private addr,
+        private addr: number,
         private func: () => void
     ) {
         super();
@@ -68,7 +68,7 @@ class FakeCallStepMock extends AbstractStepMock {
 
 class OnStepMock extends AbstractStepMock {
     public constructor(
-        private addr,
+        private addr: number,
         private func: () => StepResponse
     ) {
         super();

@@ -30,6 +30,11 @@ The idea is that you can do something like this:
 This compiles a block of Z80 code, and then runs it up to the breakpoint, and then checks that a register is correct. I'm using it with Vitest, but zat doesn't depend on a
 particular test framework.
 
+`run()` and `call()` return `{ instructions, tStates, coverage }`: the number of instructions
+executed, the number of T-states they took, and how many times each address was executed.
+
+Symbols are case-sensitive, as they are in z80asm.
+
 The registers are in `zat.z80.regs` (`a`, `f`, `bc`, `hl`, `afPrime`, `ix`, `sp`, `pc` etc.), and
 `zat.flags` gives the flags in F as 0 or 1 (`zat.flags.Z`, `zat.flags.C` etc.), which can also be
 set. `zat.altFlags` does the same for F'.
@@ -59,10 +64,10 @@ You can write functions to handle memory and io reads and writes.
         }
     });
 
-I am working on improving this part
-of the system so that you can read back the io activity automatically after running a test. You can
-use an IoSpy to respond to IN instructions, and check OUT instructions. If the IO doesn't happen
-as expected, an `IoSpyError` is thrown, which stops the code running and fails the test:
+You can use an IoSpy to respond to IN instructions, and check OUT instructions. If the IO doesn't
+happen as expected, an `IoSpyError` is thrown, which stops the code running and fails the test.
+Ports can be numbers or symbols. Only the low 8 bits of the port address are compared, unless the
+expected port is more than `$FF`, in which case all 16 bits must match:
 
     it('should read a character', function() {
         zat.compileFile('spec/test.z80');
