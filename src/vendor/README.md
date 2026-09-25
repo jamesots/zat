@@ -23,3 +23,6 @@ Local modifications
 The files were first committed unchanged, and each modification was then
 committed separately, so `git log -p src/vendor` shows exactly what was
 changed.
+
+ * The `"z80-base"` package imports in `z80-emulator` are changed to import
+   from `../z80-base/index.js`.

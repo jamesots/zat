@@ -1,4 +1,4 @@
-import { RegisterSet } from "z80-base";
+import { RegisterSet } from "../z80-base/index.js";
 
 /**
  * Complete state of the CPU.

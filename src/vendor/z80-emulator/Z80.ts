@@ -1,4 +1,4 @@
-import {Flag, hi, inc16, lo, RegisterSet, word} from "z80-base";
+import {Flag, hi, inc16, lo, RegisterSet, word} from "../z80-base/index.js";
 import {decode} from "./Decode.js";
 import {Hal} from "./Hal.js";
 import {Z80State} from "./Z80State.js";
