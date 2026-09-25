@@ -45,6 +45,9 @@ New:
 - `zat.step()` to execute a single instruction.
 - Assembled code is cached, in memory and on disk, which makes running tests
   much faster when the code hasn't changed.
+- Coverage of Z80 source files can be written to an lcov file, using
+  `saveCoverage()` and `writeLcov()`. `ListingLine` has a `data` property, and
+  `showCoverage()` no longer counts data lines.
 
 ## v0.1.10
 

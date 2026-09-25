@@ -20,6 +20,11 @@ export interface ListingLine {
     address: number;
     length: number;
     source: string;
+    /**
+     * Whether the line is data rather than code: a data directive such as
+     * db, or a macro which only contains data directives.
+     */
+    data: boolean;
 }
 
 export class CompiledProg {
@@ -71,7 +76,7 @@ export interface CompilerOptions {
 /**
  * Change this when the cached data, or how it's made, changes.
  */
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 interface CacheEntry {
     version: number;
@@ -444,10 +449,77 @@ function combineSegments(segments: Segment[]): [Buffer, number] {
  * Addresses are relative to the start of the section, so the section head
  * is added to them.
  */
+const DATA_DIRECTIVES = new Set([
+    'db',
+    'dw',
+    'dp',
+    'dq',
+    'dm',
+    'ds',
+    'dc',
+    'defb',
+    'defw',
+    'defp',
+    'defq',
+    'defm',
+    'defs',
+    'byte',
+    'word',
+    'binary',
+    'incbin',
+]);
+
+/**
+ * Whether a line of source code is a data directive, or uses a data macro.
+ * Returns undefined if the line is empty, or only has a label.
+ */
+function isData(source: string, dataMacros: Set<string>): boolean | undefined {
+    const words = source
+        .replace(/;.*$/, '')
+        .replace(/^\s*[.\w]+:/, '')
+        .trim()
+        .split(/[\s,]+/)
+        .filter((word) => word !== '')
+        .map((word) => word.toLowerCase().replace(/^\./, ''));
+    if (words.length === 0) {
+        return undefined;
+    }
+    return DATA_DIRECTIVES.has(words[0]) || dataMacros.has(words[0]);
+}
+
+/**
+ * Find macros whose bodies only contain data directives.
+ */
+function findDataMacros(list: string[]): Set<string> {
+    const dataMacros = new Set<string>();
+    let macro: string | undefined;
+    let allData = true;
+    for (const source of listingSource(list)) {
+        const start =
+            /^\s*macro\s+(\w+)/i.exec(source) ??
+            /^\s*(\w+):?\s+macro\b/i.exec(source);
+        if (start) {
+            macro = start[1].toLowerCase();
+            allData = true;
+        } else if (macro !== undefined && /^\s*endm\b/i.test(source)) {
+            if (allData) {
+                dataMacros.add(macro);
+            }
+            macro = undefined;
+        } else if (macro !== undefined) {
+            if (isData(source, dataMacros) === false) {
+                allData = false;
+            }
+        }
+    }
+    return dataMacros;
+}
+
 function parseListing(
     list: string[],
     heads: { [section: string]: number }
 ): ListingLine[] {
+    const dataMacros = findDataMacros(list);
     const lines: ListingLine[] = [];
     let file = '';
     let section = '';
@@ -476,6 +548,7 @@ function parseListing(
             address: (heads[section] || 0) + parseInt(address, 16),
             length: bytes.length / 2,
             source: source || '',
+            data: isData(source || '', dataMacros) ?? false,
         });
     }
     return lines;

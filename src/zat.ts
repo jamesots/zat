@@ -16,10 +16,27 @@ export {
 export { IoSpy, IoSpyError, Port, IoValue, IoExpectation } from './io_spies';
 import { StepMock } from './step_mocks';
 export { customMatchers } from './custom_matchers';
+import { addLine, isCoverable, lineExecuted } from './coverage';
+export {
+    LineCoverage,
+    getCoverage,
+    saveCoverage,
+    clearSavedCoverage,
+    readSavedCoverage,
+    formatLcov,
+    writeLcov,
+} from './coverage';
+import * as path from 'path';
 
 export class Zat {
     public readonly z80: Z80;
     public readonly memory = new Uint8Array(65536);
+
+    /**
+     * The source file and line of the instruction at each address, for
+     * coverage.
+     */
+    private sourceLines = new Map<number, { file: string; line: number }>();
 
     /**
      * The flags in the F register, e.g. zat.flags.Z
@@ -165,11 +182,23 @@ export class Zat {
         for (const symbol in prog.symbols) {
             this.symbols[symbol] = prog.symbols[symbol];
         }
+        let offset = 0;
         if (start !== undefined) {
-            this.load(prog.data, this.getAddress(start));
+            offset = this.getAddress(start) - prog.origin;
+            this.load(prog.data, prog.origin + offset);
         } else {
             for (const segment of prog.segments) {
                 this.load(segment.data, segment.address);
+            }
+        }
+        for (const line of prog.lines) {
+            if (isCoverable(line)) {
+                const file = path.resolve(line.file);
+                addLine(file, line.line);
+                this.sourceLines.set((line.address + offset) & 0xffff, {
+                    file,
+                    line: line.line,
+                });
             }
         }
     }
@@ -193,7 +222,14 @@ export class Zat {
         if (typeof mem === 'string') {
             mem = stringToBytes(mem);
         }
-        this.memory.set(mem, this.getAddress(start));
+        const address = this.getAddress(start);
+        this.memory.set(mem, address);
+        // The code which was there, if any, has been replaced
+        if (this.sourceLines.size > 0) {
+            for (let i = 0; i < mem.length; i++) {
+                this.sourceLines.delete(address + i);
+            }
+        }
     }
 
     public getAddress(addr: number | string): number {
@@ -334,6 +370,10 @@ export class Zat {
                     coverage[pc] = 0;
                 }
                 coverage[pc]++;
+                const source = this.sourceLines.get(pc);
+                if (source) {
+                    lineExecuted(source.file, source.line);
+                }
                 tStates += this.step();
                 count++;
             }
@@ -458,7 +498,7 @@ F': ${this.altFlags}
     public showCoverage(prog: CompiledProg, coverage: Coverage) {
         let lines = 0;
         let coveredLines = 0;
-        for (const line of prog.lines) {
+        for (const line of prog.lines.filter((line) => !line.data)) {
             lines++;
             let count = 0;
             if (coverage[line.address] > 0) {

@@ -173,3 +173,48 @@ declare module 'vitest' {
     }
 }
 ```
+
+Coverage
+========
+
+zat records which lines of your Z80 source files are executed, and can write them to an lcov file,
+e.g. for an editor extension such as Coverage Gutters to show, or for `genhtml` to make a report
+from. Only code assembled from files (with `compileFile()`, or files they include) is recorded, not
+code passed to `compile()` as a string. Data lines, such as `db`, and uses of macros which only
+contain data, aren't counted as code.
+
+Each test file's coverage needs saving when it finishes, and then combining when all the tests have
+run. With Vitest, create `spec/setup.ts`:
+```
+import { afterAll } from 'vitest';
+import { saveCoverage } from 'zat';
+
+afterAll(() => saveCoverage());
+```
+and `spec/global-setup.ts`:
+```
+import { clearSavedCoverage, writeLcov } from 'zat';
+
+export function setup() {
+    clearSavedCoverage();
+}
+
+export function teardown() {
+    writeLcov();
+}
+```
+and add them to `vitest.config.mts`:
+```
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+    test: {
+        setupFiles: ['spec/setup.ts'],
+        globalSetup: ['spec/global-setup.ts'],
+    },
+});
+```
+The coverage is written to `coverage/z80/lcov.info`. `saveCoverage()` and `writeLcov()` take
+arguments to change where the coverage is saved and written.
+
+In watch mode, the lcov file is only written when Vitest exits, and its counts include every run.

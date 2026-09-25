@@ -1,0 +1,10 @@
+; Used by coverage.spec.ts
+start:
+    ld a,1
+    cp 2
+    jr z,skip
+    inc a
+skip:
+    ret
+data:
+    db 1,2,3
