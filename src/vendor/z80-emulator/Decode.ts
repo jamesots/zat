@@ -8927,7 +8927,10 @@ function decodeED(z80: Z80): void {
     const inst = fetchInstruction(z80);
     const func = decodeMapED.get(inst);
     if (func === undefined) {
-        console.log("Unhandled opcode in ED: " + toHex(inst, 2));
+        // zat: Undefined ED opcodes are NOPs on a real Z80, and both bytes
+        // have already been fetched, so there's nothing else to do. Upstream
+        // logs "Unhandled opcode in ED" to the console here, which is noise in
+        // test output, so the logging has been removed.
     } else {
         func(z80);
     }

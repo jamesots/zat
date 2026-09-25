@@ -26,3 +26,5 @@ changed.
 
  * The `"z80-base"` package imports in `z80-emulator` are changed to import
    from `../z80-base/index.js`.
+ * `decodeED` in `Decode.ts` no longer logs to the console for undefined ED
+   opcodes, which are treated as NOPs as before.
