@@ -27,8 +27,9 @@ The idea is that you can do something like this:
         expect(zat.flags.Z).toBe(0);
     });
 
-This compiles a block of Z80 code, and then runs it up to the breakpoint, and then checks that a register is correct. I'm using it with Vitest, but zat doesn't depend on a
-particular test framework.
+This compiles a block of Z80 code, and then runs it up to the breakpoint, and then checks that a
+register is correct. I'm using it with Vitest, but zat doesn't depend on a
+particular test framework; see [Other test frameworks](#other-test-frameworks).
 
 `run()` and `call()` return `{ instructions, tStates, coverage }`: the number of instructions
 executed, the number of T-states they took, and how many times each address was executed.
@@ -229,3 +230,44 @@ The coverage is written to `coverage/z80/lcov.info`. `saveCoverage()` and `write
 arguments to change where the coverage is saved and written.
 
 In watch mode, the lcov file is only written when Vitest exits, and its counts include every run.
+
+Other test frameworks
+=====================
+
+zat reports failures by throwing errors: `IoSpy` throws an `IoSpyError`, and `getAddress()` and
+z80asm failures throw an `Error`. Every test framework treats these as failures, so most of zat
+works with any of them.
+
+The `toBeComplete()` matcher uses the `expect.extend()` format of Vitest and Jest. With other
+frameworks, check the spy directly instead:
+```
+assert.ok(ioSpy.allDone());         // node:test, or Mocha with node:assert
+expect(ioSpy.allDone()).toBe(true); // Jasmine
+expect(ioSpy.allDone()).to.be.true; // Chai
+```
+
+For coverage, call `clearSavedCoverage()` before the tests run, `saveCoverage()` at the end of each
+process that runs tests, and `writeLcov()` once all the tests have finished. `writeLcov()` only
+reads saved coverage, so call `saveCoverage()` first even if all the tests run in one process.
+
+| Framework  | Before the tests                   | After each process                           | After all the tests                    |
+|------------|------------------------------------|----------------------------------------------|----------------------------------------|
+| Jest       | `globalSetup` module               | `afterAll` in a `setupFilesAfterEnv` file    | `globalTeardown` module                |
+| Mocha      | `mochaGlobalSetup`                 | `afterAll` in `mochaHooks`                   | the same hook, after `saveCoverage()`  |
+| Jasmine    | `beforeAll` in a helper file       | `afterAll` in a helper file                  | the same hook, after `saveCoverage()`  |
+| node:test  | a command before the tests         | `after()` in each test file                  | a command after the tests              |
+
+Mocha and Jasmine run all the tests in one process by default. With Mocha's `--parallel`, write the
+lcov file in `mochaGlobalTeardown` instead. With any framework, the first and last steps can be
+separate commands:
+```
+node -e "require('zat').clearSavedCoverage()" && node --test && node -e "require('zat').writeLcov()"
+```
+
+zat is compiled to CommonJS with type declarations, so any framework can load it. Your test files
+need the framework's TypeScript support, e.g. `ts-jest` for Jest, or `tsx` for Mocha. `node:test`
+can run TypeScript test files itself, as long as they don't use syntax which needs converting, such
+as `enum`s.
+
+zat's cache and coverage files are safe to use from several processes at once, so frameworks which
+run tests in parallel worker processes work too.
