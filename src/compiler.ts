@@ -1,4 +1,5 @@
 import { execFileSync } from 'child_process';
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -60,12 +61,49 @@ export interface CompilerOptions {
      * Extra command line arguments to pass to z80asm, e.g. ['-mz180'].
      */
     args?: string[];
+    /**
+     * Whether to cache assembled code, in memory and in a cache directory
+     * in tmpDir. Defaults to true, unless $ZAT_CACHE is 0.
+     */
+    cache?: boolean;
 }
+
+/**
+ * Change this when the cached data, or how it's made, changes.
+ */
+const CACHE_VERSION = 1;
+
+interface CacheEntry {
+    version: number;
+    /** Files included by the code, and hashes of their contents */
+    dependencies: { file: string; hash: string }[];
+    segments: { address: number; data: string }[];
+    symbols: { [symbol: string]: number };
+    list: string[];
+    lines: ListingLine[];
+}
+
+/**
+ * Cached code, shared by all Compilers in this process
+ */
+const memoryCache = new Map<string, CacheEntry>();
+
+/**
+ * Entries in the cache directory which haven't been used for this long are
+ * deleted.
+ */
+const CACHE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Cache directories which have been pruned by this process
+ */
+const prunedCacheDirs = new Set<string>();
 
 export class Compiler {
     private z80asm: string;
     private tmpDir: string;
     private args: string[];
+    private cache: boolean;
 
     public constructor(options: CompilerOptions = {}) {
         this.z80asm =
@@ -75,17 +113,163 @@ export class Compiler {
             process.env.ZAT_TMPDIR ||
             path.join(process.cwd(), 'node_modules', '.cache', 'zat');
         this.args = options.args || [];
+        this.cache = options.cache ?? process.env.ZAT_CACHE !== '0';
+    }
+
+    /**
+     * Empty the in-memory cache. The cache directory is left alone.
+     */
+    public static clearMemoryCache() {
+        memoryCache.clear();
     }
 
     /**
      * Compile some code using z80asm. includeDir is used to find any
      * included files, and defaults to the current directory. name is used
      * in error messages and the listing.
+     *
+     * The result is cached, unless caching is turned off. A cached result is
+     * only used if the code, options, and any included files are the same.
      */
     public compile(
         code: string,
         includeDir = process.cwd(),
         name = 'code'
+    ): CompiledProg {
+        if (!this.cache) {
+            return this.assemble(code, includeDir, name);
+        }
+        const key = createHash('sha256')
+            .update(
+                JSON.stringify([
+                    CACHE_VERSION,
+                    this.z80asm,
+                    this.args,
+                    process.cwd(),
+                    path.resolve(includeDir),
+                    name,
+                    code,
+                ])
+            )
+            .digest('hex');
+        const cached = this.readCache(key);
+        if (cached) {
+            return cached;
+        }
+        const prog = this.assemble(code, includeDir, name);
+        this.writeCache(key, prog, includeDir, name);
+        return prog;
+    }
+
+    private cacheFile(key: string) {
+        return path.join(this.tmpDir, 'cache', `${key}.json`);
+    }
+
+    private readCache(key: string): CompiledProg | undefined {
+        let entry = memoryCache.get(key);
+        if (!entry) {
+            const file = this.cacheFile(key);
+            try {
+                entry = JSON.parse(
+                    fs.readFileSync(file).toString()
+                ) as CacheEntry;
+                // Record when the entry was last used, for pruneCache
+                const now = new Date();
+                fs.utimesSync(file, now, now);
+            } catch {
+                return undefined;
+            }
+        }
+        if (
+            entry.version !== CACHE_VERSION ||
+            entry.dependencies.some(({ file, hash }) => hashFile(file) !== hash)
+        ) {
+            memoryCache.delete(key);
+            return undefined;
+        }
+        memoryCache.set(key, entry);
+        const segments = entry.segments.map(({ address, data }) => ({
+            address,
+            data: Buffer.from(data, 'base64'),
+        }));
+        const [data, origin] = combineSegments(segments);
+        return new CompiledProg(
+            data,
+            origin,
+            segments,
+            { ...entry.symbols },
+            [...entry.list],
+            entry.lines.map((line) => ({ ...line }))
+        );
+    }
+
+    private writeCache(
+        key: string,
+        prog: CompiledProg,
+        includeDir: string,
+        name: string
+    ) {
+        const files = findDependencies(prog.list, includeDir, name);
+        if (!files) {
+            return;
+        }
+        const dependencies = [];
+        for (const file of files) {
+            const hash = hashFile(file);
+            if (hash === undefined) {
+                return;
+            }
+            dependencies.push({ file, hash });
+        }
+        const entry: CacheEntry = {
+            version: CACHE_VERSION,
+            dependencies,
+            segments: prog.segments.map(({ address, data }) => ({
+                address,
+                data: data.toString('base64'),
+            })),
+            symbols: { ...prog.symbols },
+            list: [...prog.list],
+            lines: prog.lines.map((line) => ({ ...line })),
+        };
+        memoryCache.set(key, entry);
+        // Failing to write to the cache directory isn't an error. Write to
+        // a temporary file first, as other processes may read the cache.
+        try {
+            const file = this.cacheFile(key);
+            fs.mkdirSync(path.dirname(file), { recursive: true });
+            const tmpFile = `${file}.${process.pid}.tmp`;
+            fs.writeFileSync(tmpFile, JSON.stringify(entry));
+            fs.renameSync(tmpFile, file);
+            this.pruneCache();
+        } catch {}
+    }
+
+    /**
+     * Delete entries in the cache directory which haven't been used for a
+     * while. This is done once per process.
+     */
+    private pruneCache() {
+        const dir = path.join(this.tmpDir, 'cache');
+        if (prunedCacheDirs.has(dir)) {
+            return;
+        }
+        prunedCacheDirs.add(dir);
+        const oldest = Date.now() - CACHE_MAX_AGE;
+        for (const file of fs.readdirSync(dir)) {
+            try {
+                const filePath = path.join(dir, file);
+                if (fs.statSync(filePath).mtimeMs < oldest) {
+                    fs.rmSync(filePath);
+                }
+            } catch {}
+        }
+    }
+
+    private assemble(
+        code: string,
+        includeDir: string,
+        name: string
     ): CompiledProg {
         fs.mkdirSync(this.tmpDir, { recursive: true });
         const dir = fs.mkdtempSync(path.join(this.tmpDir, 'asm-'));
@@ -97,7 +281,7 @@ export class Compiler {
             const constants = findConstants(code.split('\n'));
             fs.writeFileSync(asmFile, makePublic(code, constants));
             const asmFileRegExp = new RegExp(escapeRegExp(asmFile), 'g');
-            const assemble = () => {
+            const runZ80asm = () => {
                 try {
                     execFileSync(
                         this.z80asm,
@@ -135,7 +319,7 @@ export class Compiler {
                 return { map, list };
             };
 
-            let { map, list } = assemble();
+            let { map, list } = runZ80asm();
             // The listing also has the lines of any included files. If they
             // have constants which are missing, assemble again.
             const missing = findConstants(listingSource(list)).filter(
@@ -146,7 +330,7 @@ export class Compiler {
                     asmFile,
                     makePublic(code, [...constants, ...missing])
                 );
-                ({ map, list } = assemble());
+                ({ map, list } = runZ80asm());
             }
 
             const segments = readSegments(dir, base, map.heads);
@@ -303,8 +487,56 @@ function parseListing(
  */
 function listingSource(list: string[]): string[] {
     return list
-        .map((text) => /^\s*\d+\s+(.*)$/.exec(text)?.[1])
+        .map(
+            (text) =>
+                /^\s*\d+\s+(?:[0-9a-f]{4}\s+(?:[0-9a-f]{2})+\s+)?(.*)$/.exec(
+                    text
+                )?.[1]
+        )
         .filter((source) => source !== undefined);
+}
+
+/**
+ * Find the files which the code depends on: files included with include,
+ * which are in the listing, and files included with binary or incbin. If a
+ * binary file can't be found, return undefined.
+ */
+function findDependencies(
+    list: string[],
+    includeDir: string,
+    name: string
+): string[] | undefined {
+    const files = new Set<string>();
+    for (const text of list) {
+        const match = /^(\S.*):$/.exec(text);
+        if (match && match[1] !== name) {
+            files.add(path.resolve(match[1]));
+        }
+    }
+    for (const source of listingSource(list)) {
+        const match = /^\s*(?:[.\w]+:?\s+)?(?:binary|incbin)\s+"([^"]+)"/i.exec(
+            source
+        );
+        if (match) {
+            const file = [
+                path.resolve(match[1]),
+                path.resolve(includeDir, match[1]),
+            ].find((file) => fs.existsSync(file));
+            if (!file) {
+                return undefined;
+            }
+            files.add(file);
+        }
+    }
+    return [...files];
+}
+
+function hashFile(file: string): string | undefined {
+    try {
+        return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+    } catch {
+        return undefined;
+    }
 }
 
 /**

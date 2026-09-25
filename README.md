@@ -91,6 +91,13 @@ version); set the `ZAT_Z80ASM` environment variable, or pass `{ z80asm: 'z80asm'
 directory in `node_modules/.cache/zat`, because the snap version can't see `/tmp`. Set
 `ZAT_TMPDIR`, or pass `{ tmpDir: '...' }`, to change it.
 
+Assembled code is cached, in memory and in `node_modules/.cache/zat/cache`, so code which hasn't
+changed isn't assembled again. A cached result is only used if the code, the z80asm options, and
+any files it includes with `include`, `binary` or `incbin` are the same. Entries which haven't been
+used for 30 days are deleted. The cache doesn't know which version of z80asm made its entries, so
+delete the cache directory if you upgrade z80asm. To turn caching off, set `ZAT_CACHE=0`, or pass
+`{ cache: false }` to `new Compiler()`.
+
 z80asm leaves constants which the code doesn't use out of its symbols, unless they're declared
 `public`. So that tests can use them (e.g. for port numbers), zat finds constants defined with
 `equ`, `defc` or `=`, including in included files, and declares them `public` for you. This
