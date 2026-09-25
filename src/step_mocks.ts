@@ -7,8 +7,12 @@ export class StepMock {
     constructor(private zat: Zat) {}
 
     onStep(pc: number): StepResponse {
-        // stops at the first mock which returns a non-RUN status
-        for (const mock of this.mocks) {
+        // stops at the first mock which returns a non-RUN status. A mock may
+        // remove mocks, so loop over a copy, and skip any which are removed.
+        for (const mock of [...this.mocks]) {
+            if (!this.mocks.includes(mock)) {
+                continue;
+            }
             const result = mock.onStep(this.zat, pc);
             if (result !== StepResponse.RUN) {
                 return result;
@@ -18,30 +22,49 @@ export class StepMock {
     }
 
     public setFakeCall(pc: number | string, func: () => void) {
-        pc = this.zat.getAddress(pc);
-        this.mocks.push(new FakeCallStepMock(pc, func));
-        return this;
+        return this.add(new FakeCallStepMock(this.zat.getAddress(pc), func));
     }
 
     public setOnStep(pc: number | string, func: () => StepResponse) {
-        pc = this.zat.getAddress(pc);
-        this.mocks.push(new OnStepMock(pc, func));
-        return this;
+        return this.add(new OnStepMock(this.zat.getAddress(pc), func));
     }
 
     public setOnAllSteps(func: (pc: number) => StepResponse) {
-        this.mocks.push(new OnAllStepsMock(func));
-        return this;
+        return this.add(new OnAllStepsMock(func));
+    }
+
+    /**
+     * Add a mock, and return a function which removes it.
+     */
+    private add(mock: AbstractStepMock): () => void {
+        this.mocks.push(mock);
+        return () => {
+            this.mocks = this.mocks.filter((other) => other !== mock);
+        };
+    }
+
+    /**
+     * Remove the mocks for an address. Mocks for all steps aren't removed.
+     */
+    public remove(pc: number | string) {
+        const addr = this.zat.getAddress(pc);
+        this.mocks = this.mocks.filter((mock) => mock.addr !== addr);
+    }
+
+    public clear() {
+        this.mocks = [];
     }
 }
 
 abstract class AbstractStepMock {
+    /** The address the mock is for, if it's for one address */
+    public readonly addr?: number;
     public abstract onStep(zat: Zat, pc: number): StepResponse;
 }
 
 class FakeCallStepMock extends AbstractStepMock {
     public constructor(
-        private addr: number,
+        public readonly addr: number,
         private func: () => void
     ) {
         super();
@@ -68,7 +91,7 @@ class FakeCallStepMock extends AbstractStepMock {
 
 class OnStepMock extends AbstractStepMock {
     public constructor(
-        private addr: number,
+        public readonly addr: number,
         private func: () => StepResponse
     ) {
         super();

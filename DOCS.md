@@ -675,8 +675,28 @@ zat.mockAllSteps((pc) => {
 ```
 
 If there are several mocks for an instruction, they're called in the order they were added, until
-one returns something other than `RUN`. Mocks can't be removed, so create a new `Zat` to get rid of
-them.
+one returns something other than `RUN`.
+
+### Removing mocks
+
+`mockCall()`, `mockStep()` and `mockAllSteps()` return a function that removes the mock:
+
+```ts
+const removeMock = zat.mockCall('read_key', () => {
+    zat.z80.regs.a = 'Y'.charCodeAt(0);
+});
+zat.call('ask_yes_no');
+removeMock();
+zat.call('ask_yes_no'); // uses the real read_key
+```
+
+- **`zat.removeMocks(addr)`** removes the mocks added with `mockCall()` and `mockStep()` for an
+  address or symbol. This is useful when a `beforeEach` mocks a routine, and one test needs the
+  real one. Mocks added with `mockAllSteps()` aren't removed.
+- **`zat.clearMocks()`** removes all mocks.
+
+A mock can remove mocks, including itself, while code is running. A removed mock isn't called
+again, even for the current instruction.
 
 ## Memory and IO hooks
 

@@ -456,6 +456,81 @@ start:
         expect(zat.z80.regs.sp).toBe(0x8000);
     });
 
+    describe('removing mocks', function () {
+        beforeEach(function () {
+            zat.compile(`
+start:
+    ld a,5
+    call subroutine
+    call other
+    ret
+subroutine:
+    add a,1
+    ret
+other:
+    add a,2
+    ret
+            `);
+        });
+
+        it('should remove a mock with the function returned', function () {
+            const remove = zat.mockCall('subroutine', () => {
+                zat.z80.regs.a += 10;
+            });
+            zat.call('start');
+            expect(zat.z80.regs.a).toBe(17);
+
+            remove();
+            zat.call('start');
+            expect(zat.z80.regs.a).toBe(8);
+        });
+
+        it('should remove the mocks for an address', function () {
+            zat.mockCall('subroutine', () => {
+                zat.z80.regs.a += 10;
+            });
+            zat.mockStep('subroutine', () => StepResponse.BREAK);
+            zat.mockCall('other', () => {
+                zat.z80.regs.a += 20;
+            });
+            let steps = 0;
+            zat.mockAllSteps(() => {
+                steps++;
+                return StepResponse.RUN;
+            });
+
+            zat.removeMocks('subroutine');
+            const { instructions } = zat.call('start');
+            // The real subroutine, and the mocked other
+            expect(zat.z80.regs.a).toBe(26);
+            expect(steps).toBe(instructions);
+        });
+
+        it('should remove all mocks', function () {
+            zat.mockCall('subroutine', () => {
+                zat.z80.regs.a += 10;
+            });
+            zat.mockStep('other', () => StepResponse.BREAK);
+            zat.mockAllSteps(() => StepResponse.BREAK);
+
+            zat.clearMocks();
+            zat.call('start');
+            expect(zat.z80.regs.a).toBe(8);
+        });
+
+        it('should let a mock remove itself', function () {
+            let steps = 0;
+            const remove = zat.mockAllSteps(() => {
+                steps++;
+                remove();
+                return StepResponse.RUN;
+            });
+            zat.call('start');
+            expect(steps).toBe(1);
+            expect(zat.z80.regs.a).toBe(8);
+        });
+    });
+
     it('should not intercept a call if there is no call statement', function () {
         zat.compile(`
 start:

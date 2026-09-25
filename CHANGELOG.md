@@ -48,11 +48,16 @@ New:
 - The `returnAddress` option of `call()` pushes a return address onto the
   stack before calling the routine.
 - `zat.formatMemory()` returns what `zat.dumpMemory()` prints, as a string.
+- Mocks can be removed: `mockCall()`, `mockStep()` and `mockAllSteps()` return
+  a function which removes the mock, `zat.removeMocks()` removes the mocks
+  for an address, and `zat.clearMocks()` removes all mocks.
 
 Fixed:
 
 - `zat.dumpMemory()` didn't print the last row if it had less than 16 bytes,
   so short ranges printed nothing. It also takes a symbol as the start.
+- When `call()` finished, step mocks were called once more, for the return
+  address, although no more code was run.
 - Assembled code is cached, in memory and on disk, which makes running tests
   much faster when the code hasn't changed.
 - Coverage of Z80 source files can be written to an lcov file, using

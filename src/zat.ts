@@ -412,15 +412,16 @@ export class Zat {
                     }
                 }
             }
+            // Check the mocks last, as they may have side effects
             if (
                 regs.halted ||
                 count >= steps ||
-                this.breakpoints[regs.pc] ||
-                (stepResponse = this.stepMock.onStep(regs.pc)) ===
-                    StepResponse.BREAK ||
                 (runOptions.call &&
                     regs.sp === startSp &&
-                    this.lastInstruction === InstructionType.RET)
+                    this.lastInstruction === InstructionType.RET) ||
+                this.breakpoints[regs.pc] ||
+                (stepResponse = this.stepMock.onStep(regs.pc)) ===
+                    StepResponse.BREAK
             ) {
                 break;
             }
@@ -528,11 +529,13 @@ F': ${this.altFlags}
      * Every time addr is called, func will be executed, and then
      * control will return to wherever it was called from.
      *
-     * func will only be executed as a result of a CALL or RST, not
-     * if execution passes to the address in any other way.
+     * func will only be executed as a result of a CALL, RST or interrupt,
+     * not if execution passes to the address in any other way.
+     *
+     * Returns a function which removes the mock.
      */
-    public mockCall(addr: number | string, func: () => void) {
-        this.stepMock.setFakeCall(addr, func);
+    public mockCall(addr: number | string, func: () => void): () => void {
+        return this.stepMock.setFakeCall(addr, func);
     }
 
     /**
@@ -564,16 +567,37 @@ F': ${this.altFlags}
      * If SKIP is returned, execution continues, but the current instruction
      * is not executed. Note that if func doesn't change the PC then
      * func will immediately be called over an over again.
+     *
+     * Returns a function which removes the mock.
      */
-    public mockStep(addr: number | string, func: () => StepResponse) {
-        this.stepMock.setOnStep(addr, func);
+    public mockStep(
+        addr: number | string,
+        func: () => StepResponse
+    ): () => void {
+        return this.stepMock.setOnStep(addr, func);
     }
 
     /**
      * Like mockStep, except that func is executed for every step.
+     *
+     * Returns a function which removes the mock.
      */
-    public mockAllSteps(func: (pc: number) => StepResponse) {
-        this.stepMock.setOnAllSteps(func);
+    public mockAllSteps(func: (pc: number) => StepResponse): () => void {
+        return this.stepMock.setOnAllSteps(func);
+    }
+
+    /**
+     * Remove the mocks added with mockCall and mockStep for an address.
+     */
+    public removeMocks(addr: number | string) {
+        this.stepMock.remove(addr);
+    }
+
+    /**
+     * Remove all mocks.
+     */
+    public clearMocks() {
+        this.stepMock.clear();
     }
 
     public showCoverage(prog: CompiledProg, coverage: Coverage) {
