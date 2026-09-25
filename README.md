@@ -69,8 +69,25 @@ use an IoSpy to respond to IN instructions:
         expect(ioSpy).toBeComplete();
     });
 
-I'm using ASM80 (https://github.com/maly/asm80-node) to compile the code, and a modified version
+I'm using z80asm from z88dk (https://github.com/z88dk/z88dk) to compile the code, and a modified version
 of Z80.js (https://github.com/DrGoldfire/Z80.js) to run the code.
+
+z80asm needs to be installed. By default zat runs `z88dk.z88dk-z80asm` (the name of the snap
+version); set the `ZAT_Z80ASM` environment variable, or pass `{ z80asm: 'z80asm' }` to
+`new Compiler()`, to use a different executable. Source files are assembled in a temporary
+directory in `node_modules/.cache/zat`, because the snap version can't see `/tmp`. Set
+`ZAT_TMPDIR`, or pass `{ tmpDir: '...' }`, to change it.
+
+Note that z80asm applies an `org` to the whole section it's in, so to put code at more than
+one address, put each part in its own section:
+
+        start:
+            ld a,0
+            halt
+            section main
+            org 20
+        newstart:
+            or a
 
 This is licensed under the MIT licence.
 

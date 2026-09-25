@@ -5,6 +5,7 @@ bell: equ 6
 start:
     ld a,0
     halt
+    section main
     org 20
 newstart:
     or a
@@ -147,10 +148,10 @@ found_jump:
     jp compare_next_word
 
 ; store an address with MSB first, with bit 7 set to 1
-.macro djump xx
+macro djump xx
     db (xx / $100) + $80
     db xx & $ff
-.endm
+endm
 
 let:
     ret
@@ -160,9 +161,9 @@ error:
     ret
 
 commands:
-    db 'LET'
+    db "LET"
     djump let
-    db 'TIME'
+    db "TIME"
     djump time
     djump error
 

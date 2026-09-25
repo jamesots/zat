@@ -1,10 +1,7 @@
 import { IoSpy } from './io_spies';
 
 export const customMatchers: jasmine.CustomMatcherFactories = {
-    toBeComplete: function (
-        util: jasmine.MatchersUtil,
-        customEqualityTesters: jasmine.CustomEqualityTester[]
-    ): jasmine.CustomMatcher {
+    toBeComplete: function (util: jasmine.MatchersUtil): jasmine.CustomMatcher {
         return {
             compare: function (
                 actual: IoSpy,

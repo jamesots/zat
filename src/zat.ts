@@ -1,12 +1,16 @@
 import { Z80, Flags, InstructionType } from './z80/Z80';
 export { Z80, Flags, InstructionType } from './z80/Z80';
 import { Compiler, CompiledProg } from './compiler';
-export { Compiler, CompiledProg } from './compiler';
-import * as els from 'maz/lib/els';
+export {
+    Compiler,
+    CompiledProg,
+    CompilerOptions,
+    ListingLine,
+    Segment,
+} from './compiler';
 export { IoSpy } from './io_spies';
 import { StepMock } from './step_mocks';
 export { customMatchers } from './custom_matchers';
-import * as fs from 'fs';
 
 export class Zat {
     public readonly z80: Z80;
@@ -40,8 +44,8 @@ export class Zat {
     public onMemWrite: (addr: number, value: number) => boolean;
 
     /**
-     * The symbol table, which is created by the maz compiler. All symbols
-     * are in upper case.
+     * The symbol table, which is created by z80asm. All symbols
+     * are in lower case.
      */
     public symbols: { [addr: string]: number } = {};
 
@@ -97,15 +101,18 @@ export class Zat {
     }
 
     /**
-     * Compile some Z80 code, using the maz compiler.
+     * Compile some Z80 code, using z80asm.
      *
-     * start is the address of the first byte that should be loaded into
-     * memory — you still need to use an 'org' directive in your source code.
+     * The code is loaded at its origin (set with an 'org' directive, or 0 if
+     * there isn't one), unless start is given, in which case the first byte
+     * is loaded at start.
      *
-     * E.g. compile("org 5\n ret") would load "0 0 0 0 0 c9" at address 0,
-     * compile("org 5\n ret",5) would load "c9" at address 5,
-     * compile("ret") would load "c9" at adress 0
-     * compile("ret", 5) would load "0" at address 5
+     * E.g. compile("org 5\n ret") would load "c9" at address 5,
+     * compile("ret") would load "c9" at address 0,
+     * compile("org 5\n ret", 10) would load "c9" at address 10
+     *
+     * Note that z80asm applies an 'org' to the whole section it's in. To put
+     * code at more than one address, put each part in its own section.
      */
     public compile(code: string, start?: number | string) {
         let compiled = new Compiler().compile(code);
@@ -118,19 +125,21 @@ export class Zat {
             this.symbols[symbol] = prog.symbols[symbol];
         }
         if (start !== undefined) {
-            start = this.getAddress(start);
-            this.load(prog.data, start);
+            this.load(prog.data, this.getAddress(start));
         } else {
-            this.load(prog.data);
+            for (const segment of prog.segments) {
+                this.load(segment.data, segment.address);
+            }
         }
     }
 
     /**
-     * Compile some Z80 code from a file, using the maz compiler.
+     * Compile some Z80 code from a file, using z80asm.
      */
     public compileFile(filename: string, start?: number | string) {
         let compiled = new Compiler().compileFile(filename);
         this.loadProg(compiled, start);
+        return compiled;
     }
 
     /**
@@ -384,22 +393,14 @@ F': ${this.z80.flags_.S} ${this.z80.flags_.Z} ${this.z80.flags_.Y} ${
     public showCoverage(prog: CompiledProg, coverage: Coverage) {
         let lines = 0;
         let coveredLines = 0;
-        for (const line of prog.ast) {
-            if (els.isBytes(line)) {
-                lines++;
-                let count = 0;
-                if (coverage[line.address] > 0) {
-                    count = coverage[line.address];
-                    coveredLines++;
-                }
-                console.log(
-                    `${count}  ${line.location.line}: ${
-                        prog.sources[line.location.source].source[
-                            line.location.line - 1
-                        ]
-                    }`
-                ); // TODO
+        for (const line of prog.lines) {
+            lines++;
+            let count = 0;
+            if (coverage[line.address] > 0) {
+                count = coverage[line.address];
+                coveredLines++;
             }
+            console.log(`${count}  ${line.line}: ${line.source}`);
         }
         console.log(`${((coveredLines / lines) * 100).toFixed(1)}% covered`);
     }
