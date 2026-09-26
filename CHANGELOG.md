@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v0.2.0 (unreleased)
+## v0.2.0
 
 Breaking changes:
 
@@ -23,16 +23,18 @@ Breaking changes:
   calling Jasmine's `expect()` and `fail()`. `customMatchers` are now in the
   format used by `expect.extend()` in Vitest and Jest, and `lib/matchers` has
   been removed; see the README for the matcher's type declaration.
-
 - `run()` and `call()` return `{ instructions, tStates, coverage }` instead of
   an array.
-- Symbols are case-sensitive, instead of being lowercased. `getAddress()` throws an `Error` instead of a string, which
-  suggests the right symbol if only the case is different.
+- Symbols are case-sensitive, instead of being lowercased. `getAddress()`
+  throws an `Error` instead of a string, which suggests the right symbol if
+  only the case is different.
 - `IoSpy` compares all 16 bits of the port address if the expected port is
   more than `$FF`.
 - `onIoRead`, `onIoWrite`, `onMemRead`, `onMemWrite` and `defaultCallSp` are
   optional properties, and `onMemRead` can return `undefined`.
 - zat is compiled with `strict` on.
+- Only the compiled code and documentation are published to npm, not the
+  source, tests and configuration files.
 
 New:
 
@@ -46,6 +48,11 @@ New:
 - `zat.interrupt()` to trigger a maskable or non-maskable interrupt, and the
   `interruptEvery` and `interruptNonMaskable` run options to raise them
   regularly. The result of `run()` includes the number of interrupts.
+- Assembled code is cached, in memory and on disk, which makes running tests
+  much faster when the code hasn't changed.
+- Coverage of Z80 source files can be written to an lcov file, using
+  `saveCoverage()` and `writeLcov()`. `ListingLine` has a `data` property, and
+  `showCoverage()` no longer counts data lines.
 - `zat.step()` to execute a single instruction.
 - The `returnAddress` option of `call()` pushes a return address onto the
   stack before calling the routine.
@@ -62,11 +69,6 @@ Fixed:
   so short ranges printed nothing. It also takes a symbol as the start.
 - When `call()` finished, step mocks were called once more, for the return
   address, although no more code was run.
-- Assembled code is cached, in memory and on disk, which makes running tests
-  much faster when the code hasn't changed.
-- Coverage of Z80 source files can be written to an lcov file, using
-  `saveCoverage()` and `writeLcov()`. `ListingLine` has a `data` property, and
-  `showCoverage()` no longer counts data lines.
 
 ## v0.1.10
 

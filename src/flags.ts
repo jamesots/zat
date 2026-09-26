@@ -20,7 +20,7 @@ export class Flags {
     }
 
     /** Sign */
-    get S() {
+    get S(): number {
         return this.get(Flag.S);
     }
     set S(value: number | boolean) {
@@ -28,7 +28,7 @@ export class Flags {
     }
 
     /** Zero */
-    get Z() {
+    get Z(): number {
         return this.get(Flag.Z);
     }
     set Z(value: number | boolean) {
@@ -36,7 +36,7 @@ export class Flags {
     }
 
     /** Undocumented bit 5 */
-    get Y() {
+    get Y(): number {
         return this.get(Flag.X5);
     }
     set Y(value: number | boolean) {
@@ -44,7 +44,7 @@ export class Flags {
     }
 
     /** Half carry */
-    get H() {
+    get H(): number {
         return this.get(Flag.H);
     }
     set H(value: number | boolean) {
@@ -52,7 +52,7 @@ export class Flags {
     }
 
     /** Undocumented bit 3 */
-    get X() {
+    get X(): number {
         return this.get(Flag.X3);
     }
     set X(value: number | boolean) {
@@ -60,7 +60,7 @@ export class Flags {
     }
 
     /** Parity */
-    get P() {
+    get P(): number {
         return this.get(Flag.P);
     }
     set P(value: number | boolean) {
@@ -68,7 +68,7 @@ export class Flags {
     }
 
     /** Overflow, which is the same bit as parity */
-    get V() {
+    get V(): number {
         return this.get(Flag.V);
     }
     set V(value: number | boolean) {
@@ -76,7 +76,7 @@ export class Flags {
     }
 
     /** Subtract */
-    get N() {
+    get N(): number {
         return this.get(Flag.N);
     }
     set N(value: number | boolean) {
@@ -84,7 +84,7 @@ export class Flags {
     }
 
     /** Carry */
-    get C() {
+    get C(): number {
         return this.get(Flag.C);
     }
     set C(value: number | boolean) {

@@ -1,17 +1,42 @@
 {
   "name": "zat",
-  "version": "0.2.0-pre",
-  "description": "",
+  "version": "0.2.0",
+  "description": "Z80 Automated Testing: unit test Z80 assembly code from TypeScript or JavaScript",
+  "keywords": [
+    "z80",
+    "assembly",
+    "assembler",
+    "emulator",
+    "testing",
+    "unit-test",
+    "tdd",
+    "retro"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jamesots/zat.git"
+  },
+  "homepage": "https://github.com/jamesots/zat#readme",
+  "bugs": {
+    "url": "https://github.com/jamesots/zat/issues"
+  },
   "main": "lib/zat.js",
   "types": "lib/zat.d.ts",
+  "files": [
+    "lib",
+    "src/vendor/README.md",
+    "src/vendor/*/LICENSE",
+    "CHANGELOG.md",
+    "DOCS.md"
+  ],
   "scripts": {
-    "prepublish": "tsc",
-    "build": "tsc",
+    "build": "rm -rf lib && tsc",
     "tsc": "tsc",
     "test": "tsc -p spec && vitest run",
     "test:watch": "vitest",
     "prepare": "husky",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "prepublishOnly": "npm run build && npm test"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
