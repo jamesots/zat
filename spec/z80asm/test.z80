@@ -5,6 +5,7 @@ bell: equ 6
 start:
     ld a,0
     halt
+    section main
     org 20
 newstart:
     or a

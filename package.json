@@ -28,5 +28,11 @@
     "typescript": "^7.0.2",
     "vitest": "^5.0.1",
     "z80-test": "2.0.1"
+  },
+  "dependencies": {
+    "maz": "^0.6.0"
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }

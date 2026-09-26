@@ -36,7 +36,7 @@ particular test framework; see [Other test frameworks](#other-test-frameworks).
 `run()` and `call()` return `{ instructions, tStates, coverage }`: the number of instructions
 executed, the number of T-states they took, and how many times each address was executed.
 
-Symbols are case-sensitive, as they are in z80asm.
+Symbols are case-sensitive.
 
 To test interrupt handlers, `zat.interrupt()` raises an interrupt, or `run()` and `call()` can raise
 them regularly:
@@ -94,23 +94,38 @@ expected port is more than `$FF`, in which case all 16 bits must match:
         expect(ioSpy).toBeComplete();
     });
 
-I'm using z80asm from z88dk (https://github.com/z88dk/z88dk) to compile the code, and
-Lawrence Kesteloot's z80-emulator (https://github.com/lkesteloot/trs80) to run the code. The
+Assemblers
+==========
+
+zat assembles code with maz (https://github.com/jamesots/maz) by default. maz is written in
+TypeScript and is installed with zat, so nothing else needs to be installed. It can also use z80asm
+from z88dk (https://github.com/z88dk/z88dk), which has to be installed separately. To use z80asm,
+set the `ZAT_ASSEMBLER` environment variable to `z80asm`, or pass the option to `new Zat()`:
+
+    zat = new Zat({ assembler: 'z80asm' });
+
+The two assemblers' syntax differs in places. For example, maz's directives such as `.include`,
+`.incbin` and `.if` start with a full stop, and z80asm's don't; and z80asm applies an `org` to the
+whole section it's in, while maz lets you use `org` more than once in a section.
+
+The code is run by Lawrence Kesteloot's z80-emulator (https://github.com/lkesteloot/trs80). The
 emulator passes the FUSE emulator's Z80 tests, including the undocumented instructions and flags,
 and counts T-states. It's copied into `src/vendor`; see the README there for details.
 
-z80asm needs to be installed. By default zat runs `z88dk.z88dk-z80asm` (the name of the snap
-version); set the `ZAT_Z80ASM` environment variable, or pass `{ z80asm: 'z80asm' }` to
-`new Compiler()`, to use a different executable. Source files are assembled in a temporary
-directory in `node_modules/.cache/zat`, because the snap version can't see `/tmp`. Set
-`ZAT_TMPDIR`, or pass `{ tmpDir: '...' }`, to change it.
-
 Assembled code is cached, in memory and in `node_modules/.cache/zat/cache`, so code which hasn't
-changed isn't assembled again. A cached result is only used if the code, the z80asm options, and
-any files it includes with `include`, `binary` or `incbin` are the same. Entries which haven't been
-used for 30 days are deleted. The cache doesn't know which version of z80asm made its entries, so
-delete the cache directory if you upgrade z80asm. To turn caching off, set `ZAT_CACHE=0`, or pass
-`{ cache: false }` to `new Compiler()`.
+changed isn't assembled again. A cached result is only used if the code, the assembler and its
+options, and any files the code includes are the same. Entries which haven't been used for 30 days
+are deleted. The cache knows which version of maz made its entries, but not which version of
+z80asm, so delete the cache directory if you upgrade z80asm. To turn caching off, set
+`ZAT_CACHE=0`, or pass `{ cache: false }` to `new Zat()` or `new Compiler()`.
+
+z80asm
+------
+
+By default zat runs `z88dk.z88dk-z80asm` (the name of the snap version); set the `ZAT_Z80ASM`
+environment variable, or pass `{ z80asm: 'z80asm' }`, to use a different executable. Source files
+are assembled in a temporary directory in `node_modules/.cache/zat`, because the snap version can't
+see `/tmp`. Set `ZAT_TMPDIR`, or pass `{ tmpDir: '...' }`, to change it.
 
 z80asm leaves constants which the code doesn't use out of its symbols, unless they're declared
 `public`. So that tests can use them (e.g. for port numbers), zat finds constants defined with
@@ -257,7 +272,7 @@ Other test frameworks
 =====================
 
 zat reports failures by throwing errors: `IoSpy` throws an `IoSpyError`, and `getAddress()` and
-z80asm failures throw an `Error`. Every test framework treats these as failures, so most of zat
+assembler errors throw an `Error`. Every test framework treats these as failures, so most of zat
 works with any of them.
 
 The `toBeComplete()` matcher uses the `expect.extend()` format of Vitest and Jest. With other

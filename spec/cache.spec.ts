@@ -1,47 +1,57 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+    describe,
+    it,
+    expect,
+    beforeEach,
+    afterEach,
+    vi,
+    MockInstance,
+} from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Compiler, CompilerOptions } from '../src/zat';
+import { assemblers, skipAssembler } from './assemblers';
 
-describe('Compiler cache', function () {
+describe.each(assemblers)('Compiler cache with %s', function (assembler) {
     let dir: string;
-    let countFile: string;
     let options: CompilerOptions;
+    let assemble: MockInstance;
+    const include = assembler === 'maz' ? '.include' : 'include';
+    const binary = assembler === 'maz' ? '.incbin' : 'binary';
 
-    beforeEach(function () {
+    beforeEach(function (context) {
+        if (skipAssembler(assembler)) {
+            context.skip('z80asm is not installed');
+        }
         // Not in the scratch directory, as the snap version of z80asm can't
         // see /tmp
         fs.mkdirSync('node_modules/.cache', { recursive: true });
         dir = fs.mkdtempSync(path.resolve('node_modules/.cache/zat-test-'));
-        countFile = path.join(dir, 'count');
-        // Count how many times z80asm is run
-        const z80asm = path.join(dir, 'z80asm');
-        fs.writeFileSync(
-            z80asm,
-            `#!/bin/sh\necho >> "${countFile}"\nexec ${
-                process.env.ZAT_Z80ASM ?? 'z88dk.z88dk-z80asm'
-            } "$@"\n`,
-            { mode: 0o755 }
+        options = { assembler, tmpDir: path.join(dir, 'tmp') };
+        // Count how many times the code is assembled
+        assemble = vi.spyOn(
+            Compiler.prototype as unknown as { assemble: () => unknown },
+            'assemble'
         );
-        options = { z80asm, tmpDir: path.join(dir, 'tmp') };
         Compiler.clearMemoryCache();
     });
 
     afterEach(function () {
-        fs.rmSync(dir, { recursive: true, force: true });
+        vi.restoreAllMocks();
+        if (dir) {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
     });
 
-    function z80asmRuns() {
-        return fs.existsSync(countFile)
-            ? fs.readFileSync(countFile).toString().split('\n').length - 1
-            : 0;
+    function assembleCount() {
+        return assemble.mock.calls.length;
     }
 
     it('should use the in-memory cache', function () {
         const compiler = new Compiler(options);
         const prog1 = compiler.compile('start:\n ld a,1\n ret\n');
         const prog2 = compiler.compile('start:\n ld a,1\n ret\n');
-        expect(z80asmRuns()).toBe(1);
+        expect(assembleCount()).toBe(1);
         expect(prog2).toEqual(prog1);
 
         // Each result is a separate copy
@@ -54,7 +64,7 @@ describe('Compiler cache', function () {
         const prog1 = new Compiler(options).compile('start:\n ld a,1\n ret\n');
         Compiler.clearMemoryCache();
         const prog2 = new Compiler(options).compile('start:\n ld a,1\n ret\n');
-        expect(z80asmRuns()).toBe(1);
+        expect(assembleCount()).toBe(1);
         expect(prog2).toEqual(prog1);
     });
 
@@ -62,43 +72,43 @@ describe('Compiler cache', function () {
         const compiler = new Compiler(options);
         compiler.compile('start:\n ld a,1\n ret\n');
         const prog = compiler.compile('start:\n ld a,2\n ret\n');
-        expect(z80asmRuns()).toBe(2);
+        expect(assembleCount()).toBe(2);
         expect(prog.data).toEqual(Buffer.from([0x3e, 0x02, 0xc9]));
     });
 
     it('should assemble again if an included file changes', function () {
         const compiler = new Compiler(options);
-        const include = path.join(dir, 'include.asm');
-        const code = `include "${include}"\nstart:\n ld a,value\n ret\n`;
-        fs.writeFileSync(include, 'value: equ 1\n');
+        const file = path.join(dir, 'include.asm');
+        const code = `${include} "${file}"\nstart:\n ld a,value\n ret\n`;
+        fs.writeFileSync(file, 'value: equ 1\n');
         compiler.compile(code);
         compiler.compile(code);
-        expect(z80asmRuns()).toBe(1);
+        expect(assembleCount()).toBe(1);
 
-        fs.writeFileSync(include, 'value: equ 2\n');
+        fs.writeFileSync(file, 'value: equ 2\n');
         let prog = compiler.compile(code);
-        expect(z80asmRuns()).toBe(2);
+        expect(assembleCount()).toBe(2);
         expect(prog.data).toEqual(Buffer.from([0x3e, 0x02, 0xc9]));
 
         Compiler.clearMemoryCache();
-        fs.writeFileSync(include, 'value: equ 3\n');
+        fs.writeFileSync(file, 'value: equ 3\n');
         prog = compiler.compile(code);
-        expect(z80asmRuns()).toBe(3);
+        expect(assembleCount()).toBe(3);
         expect(prog.data).toEqual(Buffer.from([0x3e, 0x03, 0xc9]));
     });
 
     it('should assemble again if a binary file changes', function () {
         const compiler = new Compiler(options);
-        const binary = path.join(dir, 'data.bin');
-        const code = `start:\n binary "${binary}"\n`;
-        fs.writeFileSync(binary, Buffer.from([1, 2]));
+        const file = path.join(dir, 'data.bin');
+        const code = `start:\n ${binary} "${file}"\n`;
+        fs.writeFileSync(file, Buffer.from([1, 2]));
         compiler.compile(code);
         compiler.compile(code);
-        expect(z80asmRuns()).toBe(1);
+        expect(assembleCount()).toBe(1);
 
-        fs.writeFileSync(binary, Buffer.from([3, 4]));
+        fs.writeFileSync(file, Buffer.from([3, 4]));
         const prog = compiler.compile(code);
-        expect(z80asmRuns()).toBe(2);
+        expect(assembleCount()).toBe(2);
         expect(prog.data).toEqual(Buffer.from([3, 4]));
     });
 
@@ -122,14 +132,14 @@ describe('Compiler cache', function () {
         const compiler = new Compiler(options);
         expect(() => compiler.compile(' bad\n')).toThrow();
         expect(() => compiler.compile(' bad\n')).toThrow();
-        expect(z80asmRuns()).toBe(2);
+        expect(assembleCount()).toBe(2);
     });
 
     it('should not cache if caching is turned off', function () {
         const compiler = new Compiler({ ...options, cache: false });
         compiler.compile('start:\n ld a,1\n ret\n');
         compiler.compile('start:\n ld a,1\n ret\n');
-        expect(z80asmRuns()).toBe(2);
+        expect(assembleCount()).toBe(2);
         expect(fs.existsSync(path.join(dir, 'tmp', 'cache'))).toBe(false);
     });
 });

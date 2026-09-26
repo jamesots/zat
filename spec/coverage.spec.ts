@@ -91,7 +91,7 @@ start:
     ld a,1
     db 1
 label: dw 2
-    DEFM "hello"
+    DB "hello"
     defs 2
     data_macro 4
     code_macro 5

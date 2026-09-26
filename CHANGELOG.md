@@ -4,12 +4,8 @@
 
 Breaking changes:
 
-- Code is assembled with z80asm from z88dk instead of maz. z80asm needs to be
-  installed. Its syntax differs from maz's in places, e.g. `macro`/`endm`, and
-  double quoted strings. An `org` applies to the whole section it's in, so use
-  sections to put code at different addresses.
-  zat declares constants `public`, so that ones which aren't used are still
-  in the symbols.
+- maz is upgraded to 0.6.0, and zat needs Node.js 22.12 or later, as maz
+  does. See maz's changelog for what's changed in it.
 - The Z80.js emulator is replaced with z80-emulator, which passes the FUSE
   tests. Z80.js gave wrong results for some documented instructions, such as
   `rlc (ix+d)` and `add ix,sp`.
@@ -30,8 +26,7 @@ Breaking changes:
 
 - `run()` and `call()` return `{ instructions, tStates, coverage }` instead of
   an array.
-- Symbols are case-sensitive, as they are in z80asm, instead of being
-  lowercased. `getAddress()` throws an `Error` instead of a string, which
+- Symbols are case-sensitive, instead of being lowercased. `getAddress()` throws an `Error` instead of a string, which
   suggests the right symbol if only the case is different.
 - `IoSpy` compares all 16 bits of the port address if the expected port is
   more than `$FF`.
@@ -41,6 +36,13 @@ Breaking changes:
 
 New:
 
+- Code can be assembled with z80asm from z88dk instead of maz, by setting
+  `ZAT_ASSEMBLER=z80asm` or passing `{ assembler: 'z80asm' }` to `new Zat()`
+  or `new Compiler()`. z80asm needs to be installed. zat declares its
+  constants `public`, so that ones which aren't used are still in the
+  symbols.
+- `new Zat()` takes compiler options, which `compile()` and `compileFile()`
+  use, and `zat.compiler` is the `Compiler` they use.
 - `zat.interrupt()` to trigger a maskable or non-maskable interrupt, and the
   `interruptEvery` and `interruptNonMaskable` run options to raise them
   regularly. The result of `run()` includes the number of interrupts.

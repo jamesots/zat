@@ -11,7 +11,6 @@ describe('interrupts', function () {
 
     it('should raise interrupts regularly', function () {
         zat.compile(`
-    section int
     org $38
     push af
     ld a,(frames)
@@ -21,7 +20,6 @@ describe('interrupts', function () {
     ei
     reti
 
-    section main
     org $100
 start:
     im 1
@@ -47,13 +45,11 @@ frames:
 
     it('should wait for an interrupt after a HALT', function () {
         zat.compile(`
-    section int
     org $38
     ld b,$42
     ei
     ret
 
-    section main
     org $100
 start:
     im 1
@@ -87,13 +83,11 @@ start:
 
     it('should miss interrupts while interrupts are disabled', function () {
         zat.compile(`
-    section int
     org $38
     inc c
     ei
     ret
 
-    section main
     org $100
 start:
     im 1
@@ -111,12 +105,10 @@ loop:
 
     it('should accept an interrupt after the instruction after EI', function () {
         zat.compile(`
-    section int
     org $38
     ld (seen),a
     ret
 
-    section main
     org $100
 start:
     im 1 ; 8 T-states
@@ -135,12 +127,10 @@ seen:
 
     it('should raise non-maskable interrupts', function () {
         zat.compile(`
-    section nmi
     org $66
     inc c
     retn
 
-    section main
     org $100
 start:
     di
@@ -161,12 +151,10 @@ wait:
 
     it('should let an interrupt handler be mocked', function () {
         zat.compile(`
-    section int
     org $38
 int:
     ret
 
-    section main
     org $100
 start:
     im 1

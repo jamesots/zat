@@ -1,7 +1,7 @@
 # zat documentation
 
 zat (Z80 Automated Testing) lets you write unit tests for Z80 assembly code in TypeScript or
-JavaScript. It assembles your code with z80asm, runs it in a Z80 emulator, and gives your tests
+JavaScript. It assembles your code with maz or z80asm, runs it in a Z80 emulator, and gives your tests
 control over memory, registers, IO, interrupts and subroutine calls.
 
 This document covers everything zat provides. For a shorter introduction, see the
@@ -29,10 +29,10 @@ This document covers everything zat provides. For a shorter introduction, see th
 
 ## Requirements
 
-- **Node.js.** zat is developed with Node.js 24.
-- **z80asm**, from [z88dk](https://github.com/z88dk/z88dk). zat runs `z88dk.z88dk-z80asm` by
-  default, which is the name of the command in the z88dk snap. If yours is called something else,
-  such as `z80asm`, set the `ZAT_Z80ASM` environment variable to its name or path.
+- **Node.js** 22.12 or later. zat is developed with Node.js 24.
+- Nothing else, if you use maz, the default assembler, which is installed with zat. To use z80asm
+  instead, install [z88dk](https://github.com/z88dk/z88dk); see
+  [Choosing an assembler](#choosing-an-assembler).
 
 ## Installation and setup
 
@@ -131,6 +131,38 @@ until it returns.
 
 ## Assembling code
 
+### Choosing an assembler
+
+zat can assemble code with either of two assemblers:
+
+- **[maz](https://github.com/jamesots/maz)**, the default. It's written in TypeScript and installed
+  with zat, so nothing else needs to be installed, and it runs in the same process as the tests.
+- **z80asm**, from [z88dk](https://github.com/z88dk/z88dk), which has to be installed. zat runs
+  `z88dk.z88dk-z80asm` by default, which is the name of the command in the z88dk snap. If yours is
+  called something else, such as `z80asm`, set the `ZAT_Z80ASM` environment variable to its name
+  or path.
+
+To use z80asm, set the `ZAT_ASSEMBLER` environment variable to `z80asm`, or pass
+[compiler options](#compiler) to `new Zat()`:
+
+```ts
+zat = new Zat({ assembler: 'z80asm' });
+```
+
+To set the environment variable for all your tests, put it in `vitest.config.mts`:
+
+```ts
+export default defineConfig({
+    test: {
+        env: { ZAT_ASSEMBLER: 'z80asm' },
+        // ...
+    },
+});
+```
+
+The two assemblers' syntax differs in places, so code written for one may need changes to work
+with the other. See [maz syntax](#maz-syntax) and [z80asm syntax](#z80asm-syntax).
+
 ### `zat.compile(code, loadAt?)`
 
 Assembles a string of Z80 code, loads it into memory, and adds its symbols to
@@ -160,10 +192,15 @@ zat.compile(' ret');             // loads c9 at address 0
 zat.compile(' org 5\n ret', 10); // loads c9 at address 10
 ```
 
-`include` files in code passed to `compile()` are looked for relative to the current directory.
+Included files in code passed to `compile()` are looked for relative to the current directory.
 
-Errors from z80asm are thrown as an `Error`, with z80asm's messages. Line numbers in them refer to
-the code string, which is called `code`:
+Errors from the assembler are thrown as an `Error`, with the assembler's messages. Line numbers in
+them refer to the code string, which is called `code`:
+
+```
+maz failed:
+code:3: Unknown macro 'bad'
+```
 
 ```
 z80asm failed: code:3: error: syntax error
@@ -175,8 +212,9 @@ rather than the code being tested.
 
 ### `zat.compileFile(filename, loadAt?)`
 
-Like `compile()`, but assembles a file. `include` files are looked for relative to the file's
-directory, as well as the current directory. Returns a `CompiledProg`.
+Like `compile()`, but assembles a file. Included files are looked for relative to the file's
+directory. With maz, a file included from an included file is looked for relative to that file
+first. With z80asm, files are also looked for relative to the current directory. Returns a `CompiledProg`.
 
 ```ts
 zat.compileFile('src/maths.z80');
@@ -208,9 +246,41 @@ beforeEach(() => {
 
 Several programs can be loaded into the same `Zat`, and they share its symbol table.
 
+### maz syntax
+
+Some things to know about maz, the default assembler:
+
+- **Directives** such as `.include`, `.incbin`, `.if`, `.else`, `.endif`, `.block` and `.phase`
+  start with a full stop. `org`, `equ`, `db`, `dw`, `ds`, `macro` and `endm` can be written with or
+  without one.
+- **Labels** need a colon: `start:`.
+- **Strings** in `db` can use double or single quotes, and JavaScript escapes such as `\n`. They're
+  encoded as UTF-8.
+- **Macros** are defined with `macro name args` and `endm`.
+- **Hex numbers** can be written `$ff` or `0ffh`, but not `0xff`.
+- **Constants** are defined with `name: equ value`. All of them are in the symbols, whether the
+  code uses them or not.
+- **`org` can be used more than once**, to put code at more than one address, as long as no `org`
+  is below the first one:
+
+  ```
+  start:
+      jp main
+      org $38
+      ; interrupt handler here
+      reti
+      org $100
+  main:
+      ; ...
+  ```
+
+- **Libraries.** `.library "file"` assembles only the routines in a library that the code uses.
+
+See the [maz README](https://github.com/jamesots/maz#readme) for everything else.
+
 ### z80asm syntax
 
-zat uses z80asm from z88dk, so code must use its syntax. Some things to know:
+Some things to know about z80asm:
 
 - **Strings** in `db` use double quotes: `db "hello", 0`.
 - **Macros** are defined with `macro name args` and `endm`.
@@ -243,32 +313,35 @@ else.
 
 ### `Compiler`
 
-`zat.compile()` and `zat.compileFile()` use a `Compiler` with the default options. To use other
-options, use a `Compiler` directly, and load the result with `zat.loadProg()`.
+`zat.compile()` and `zat.compileFile()` use `zat.compiler`, a `Compiler` made with the options
+passed to `new Zat(options?)`. A `Compiler` can also be used directly, and the result loaded with
+`zat.loadProg()`:
 
 ```ts
 import { Compiler } from 'zat';
 
-const compiler = new Compiler({ args: ['-mz180'] });
+const compiler = new Compiler({ assembler: 'z80asm', args: ['-mz180'] });
 zat.loadProg(compiler.compileFile('src/z180.asm'));
 ```
 
-`new Compiler(options?)` takes a `CompilerOptions` object:
+`new Compiler(options?)` and `new Zat(options?)` take a `CompilerOptions` object:
 
-| Option   | Default                                        | Description                                                       |
-|----------|------------------------------------------------|-------------------------------------------------------------------|
-| `z80asm` | `$ZAT_Z80ASM`, or `z88dk.z88dk-z80asm`         | The z80asm command.                                               |
-| `tmpDir` | `$ZAT_TMPDIR`, or `node_modules/.cache/zat`    | Where temporary files and the cache are kept.                     |
-| `args`   | `[]`                                           | Extra arguments for z80asm, e.g. `['-mz180']` for a Z180.         |
-| `cache`  | `true`, unless `$ZAT_CACHE` is `0`             | Whether to [cache](#caching) assembled code.                      |
+| Option      | Default                                        | Description                                                       |
+|-------------|------------------------------------------------|-------------------------------------------------------------------|
+| `assembler` | `$ZAT_ASSEMBLER`, or `'maz'`                   | The assembler: `'maz'` or `'z80asm'`.                             |
+| `z80asm`    | `$ZAT_Z80ASM`, or `z88dk.z88dk-z80asm`         | The z80asm command.                                               |
+| `tmpDir`    | `$ZAT_TMPDIR`, or `node_modules/.cache/zat`    | Where the cache, and z80asm's temporary files, are kept.          |
+| `args`      | `[]`                                           | Extra arguments for z80asm, e.g. `['-mz180']` for a Z180.         |
+| `cache`     | `true`, unless `$ZAT_CACHE` is `0`             | Whether to [cache](#caching) assembled code.                      |
 
 `tmpDir` isn't the system's temporary directory because the z88dk snap can't see `/tmp`. If you
 change it, it must be somewhere that z80asm can read and write.
 
-Methods:
+Properties and methods:
 
+- **`assembler`** is the assembler being used, `'maz'` or `'z80asm'`.
 - **`compile(code, includeDir?, name?)`** assembles a string, and returns a `CompiledProg`.
-  `includeDir` is where `include` files are looked for, and defaults to the current directory.
+  `includeDir` is where included files are looked for, and defaults to the current directory.
   `name` is used for the code in error messages and the listing, and defaults to `code`.
 - **`compileFile(filename)`** assembles a file, and returns a `CompiledProg`.
 - **`Compiler.clearMemoryCache()`** (static) empties the in-memory cache. The cache directory
@@ -276,15 +349,18 @@ Methods:
 
 ### Caching
 
-Running z80asm takes a noticeable time, so assembled code is cached, in memory and in
-`node_modules/.cache/zat/cache`. A cached result is only used if the code, the name, the include
-directory, the z80asm command and its arguments are the same, and none of the files included with
-`include`, `binary` or `incbin` have changed.
+Assembling takes a noticeable time, particularly with z80asm, so assembled code is cached, in
+memory and in `node_modules/.cache/zat/cache`. A cached result is only used if the code, the name,
+the include directory and the assembler are the same, and none of the files the code includes
+have changed. For maz, that includes files included with `.include`, `.incbin` and `.library`, and
+maz's version. For z80asm, it includes the z80asm command and its arguments, and files included
+with `include`, `binary` or `incbin`.
 
 Cache entries that haven't been used for 30 days are deleted. The cache doesn't know which version
 of z80asm made an entry, so delete `node_modules/.cache/zat/cache` if you upgrade z80asm.
 
-To turn caching off, set `ZAT_CACHE=0`, or pass `{ cache: false }` to `new Compiler()`.
+To turn caching off, set `ZAT_CACHE=0`, or pass `{ cache: false }` to `new Zat()` or
+`new Compiler()`.
 
 ### `CompiledProg`
 
@@ -294,9 +370,9 @@ The result of assembling some code.
 |------------|-----------------------------------|----------------------------------------------------------------------------------------------|
 | `data`     | `Buffer`                          | All the assembled bytes, from `origin` to the end of the last segment. Gaps are filled with zeros. |
 | `origin`   | `number`                          | The address of the first byte of `data`.                                                     |
-| `segments` | `Segment[]`                       | The assembled bytes of each section, as `{ address, data }`, in address order.               |
+| `segments` | `Segment[]`                       | Blocks of assembled bytes, as `{ address, data }`, in address order: one per section for z80asm, one per contiguous block for maz. |
 | `symbols`  | `{ [symbol: string]: number }`    | The symbols, i.e. labels and constants, and their values.                                    |
-| `list`     | `string[]`                        | The lines of z80asm's listing.                                                               |
+| `list`     | `string[]`                        | The lines of the assembler's listing.                                                        |
 | `lines`    | `ListingLine[]`                   | The lines of source code that produced bytes.                                                |
 
 `prog.dumpList()` prints the listing.
@@ -348,7 +424,7 @@ expect(zat.getMemory('buffer', 6)).toEqual(stringToBytes('hello\0'));
 ### Symbols
 
 `zat.symbols` is the symbol table: an object mapping each symbol's name to its value. Symbols are
-added when code is assembled or loaded. They're case-sensitive, as they are in z80asm.
+added when code is assembled or loaded. They're case-sensitive.
 
 Wherever zat takes an address, you can use a symbol name instead.
 
@@ -565,12 +641,10 @@ Interrupt modes 0 and 1 jump to `$38`. In interrupt mode 2, the byte from the da
 ```ts
 zat.compile(`
     jp start
-    section int
     org $38
     ld b,$42
     ei
     ret
-    section main
     org $100
 start:
     ld sp,$ff00
@@ -1034,11 +1108,12 @@ run tests in parallel worker processes work too.
 
 ## Environment variables
 
-| Variable     | Description                                                                          |
-|--------------|--------------------------------------------------------------------------------------|
-| `ZAT_Z80ASM` | The z80asm command. Defaults to `z88dk.z88dk-z80asm`.                                |
-| `ZAT_TMPDIR` | Where temporary files and the cache are kept. Defaults to `node_modules/.cache/zat`. |
-| `ZAT_CACHE`  | Set to `0` to turn off caching.                                                      |
+| Variable        | Description                                                                                     |
+|-----------------|-------------------------------------------------------------------------------------------------|
+| `ZAT_ASSEMBLER` | The assembler: `maz` or `z80asm`. Defaults to `maz`.                                            |
+| `ZAT_Z80ASM`    | The z80asm command. Defaults to `z88dk.z88dk-z80asm`.                                           |
+| `ZAT_TMPDIR`    | Where the cache, and z80asm's temporary files, are kept. Defaults to `node_modules/.cache/zat`. |
+| `ZAT_CACHE`     | Set to `0` to turn off caching.                                                                 |
 
 ## Everything zat exports
 
@@ -1049,7 +1124,7 @@ run tests in parallel worker processes work too.
 | `StepResponse`                                          | enum      | [`mockStep()`](#zatmockstepaddr-func)             |
 | `InstructionType`                                       | enum      | [`lastInstruction`](#zatlastinstruction)          |
 | `Compiler`, `CompiledProg`                              | classes   | [Assembling code](#assembling-code)               |
-| `CompilerOptions`, `ListingLine`, `Segment`             | types     | [Assembling code](#assembling-code)               |
+| `Assembler`, `CompilerOptions`, `ListingLine`, `Segment` | types  | [Assembling code](#assembling-code)               |
 | `IoSpy`, `IoSpyError`                                   | classes   | [IoSpy](#iospy)                                   |
 | `Port`, `IoValue`, `IoExpectation`                      | types     | [IoSpy](#iospy)                                   |
 | `customMatchers`                                        | object    | [Matchers](#matchers)                             |

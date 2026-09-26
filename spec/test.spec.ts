@@ -40,7 +40,6 @@ describe('things', function () {
 start:
     ld a,0
     halt
-    section main
     org 20
 newstart:
     or a
@@ -242,13 +241,10 @@ start:
     it('should include unused constants in the symbols', function () {
         const prog = zat.compile(`
 equ_const: equ $10
-.dot_const equ $11
-eq_const = $12
-defc defc1 = $13, defc2 = $14 ; comment = 1
-if 0
+.if 0
 false_const: equ $15
-endif
-include "spec/constants.inc"
+.endif
+.include "spec/constants.inc"
 used_const: equ 1
 start:
     ld a,used_const
@@ -256,15 +252,21 @@ start:
         `);
         expect(zat.symbols).toEqual({
             equ_const: 0x10,
-            dot_const: 0x11,
-            eq_const: 0x12,
-            defc1: 0x13,
-            defc2: 0x14,
             inc_const: 0x33,
             used_const: 1,
             start: 0,
         });
         expect(prog.data).toEqual(Buffer.from([0x3e, 0x01, 0xc9]));
+    });
+
+    it('should throw assembler errors', function () {
+        expect(() =>
+            zat.compile(`
+start:
+    ld a,1
+    bad
+        `)
+        ).toThrow("maz failed:\ncode:4: Unknown macro 'bad'");
     });
 
     it('should read and write', function () {
@@ -584,11 +586,9 @@ subroutine:
     it('should intercept an RST', function () {
         zat.compile(`
     jp start
-    section rst8
     org $08
 rst8:
     ret
-    section main
     org $100
 start:
     ld a,5
@@ -636,12 +636,10 @@ start:
     it('should handle an interrupt', function () {
         zat.compile(`
     jp start
-    section int
     org $38
     ld b,$42
     ei
     ret
-    section main
     org $100
 start:
     ld sp,$ff00

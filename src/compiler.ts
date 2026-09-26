@@ -2,6 +2,7 @@ import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { FileResolver, Programme } from 'maz';
 
 /**
  * A contiguous block of assembled bytes, e.g. one section.
@@ -51,15 +52,28 @@ export class CompiledProg {
     }
 }
 
+/**
+ * The assemblers zat can use: maz, which is installed with zat, or z80asm
+ * from z88dk, which has to be installed separately.
+ */
+export type Assembler = 'maz' | 'z80asm';
+
+const ASSEMBLERS: readonly string[] = ['maz', 'z80asm'];
+
 export interface CompilerOptions {
+    /**
+     * The assembler to use. Defaults to $ZAT_ASSEMBLER, or maz.
+     */
+    assembler?: Assembler;
     /**
      * The z80asm executable. Defaults to $ZAT_Z80ASM, or z88dk.z88dk-z80asm.
      */
     z80asm?: string;
     /**
-     * The directory in which temporary directories are created. Defaults to
-     * $ZAT_TMPDIR, or node_modules/.cache/zat in the current directory. This
-     * isn't os.tmpdir() because the snap version of z88dk has a private /tmp.
+     * The directory in which the cache directory and z80asm's temporary
+     * directories are created. Defaults to $ZAT_TMPDIR, or
+     * node_modules/.cache/zat in the current directory. This isn't
+     * os.tmpdir() because the snap version of z88dk has a private /tmp.
      */
     tmpDir?: string;
     /**
@@ -104,13 +118,31 @@ const CACHE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
  */
 const prunedCacheDirs = new Set<string>();
 
+/**
+ * The results of assembling some code, and the files it depends on, or
+ * undefined if they aren't known, in which case it isn't cached.
+ */
+interface Assembled {
+    prog: CompiledProg;
+    dependencies: string[] | undefined;
+}
+
 export class Compiler {
+    public readonly assembler: Assembler;
     private z80asm: string;
     private tmpDir: string;
     private args: string[];
     private cache: boolean;
 
     public constructor(options: CompilerOptions = {}) {
+        const assembler =
+            options.assembler || process.env.ZAT_ASSEMBLER || 'maz';
+        if (!ASSEMBLERS.includes(assembler)) {
+            throw new Error(
+                `Unknown assembler '${assembler}': it must be maz or z80asm`
+            );
+        }
+        this.assembler = assembler as Assembler;
         this.z80asm =
             options.z80asm || process.env.ZAT_Z80ASM || 'z88dk.z88dk-z80asm';
         this.tmpDir =
@@ -129,9 +161,9 @@ export class Compiler {
     }
 
     /**
-     * Compile some code using z80asm. includeDir is used to find any
-     * included files, and defaults to the current directory. name is used
-     * in error messages and the listing.
+     * Compile some code. includeDir is used to find any included files, and
+     * defaults to the current directory. name is used in error messages and
+     * the listing.
      *
      * The result is cached, unless caching is turned off. A cached result is
      * only used if the code, options, and any included files are the same.
@@ -142,14 +174,16 @@ export class Compiler {
         name = 'code'
     ): CompiledProg {
         if (!this.cache) {
-            return this.assemble(code, includeDir, name);
+            return this.assemble(code, includeDir, name).prog;
         }
         const key = createHash('sha256')
             .update(
                 JSON.stringify([
                     CACHE_VERSION,
-                    this.z80asm,
-                    this.args,
+                    this.assembler,
+                    ...(this.assembler === 'maz'
+                        ? [mazVersion()]
+                        : [this.z80asm, this.args]),
                     process.cwd(),
                     path.resolve(includeDir),
                     name,
@@ -161,8 +195,10 @@ export class Compiler {
         if (cached) {
             return cached;
         }
-        const prog = this.assemble(code, includeDir, name);
-        this.writeCache(key, prog, includeDir, name);
+        const { prog, dependencies } = this.assemble(code, includeDir, name);
+        if (dependencies) {
+            this.writeCache(key, prog, dependencies);
+        }
         return prog;
     }
 
@@ -208,16 +244,7 @@ export class Compiler {
         );
     }
 
-    private writeCache(
-        key: string,
-        prog: CompiledProg,
-        includeDir: string,
-        name: string
-    ) {
-        const files = findDependencies(prog.list, includeDir, name);
-        if (!files) {
-            return;
-        }
+    private writeCache(key: string, prog: CompiledProg, files: string[]) {
         const dependencies = [];
         for (const file of files) {
             const hash = hashFile(file);
@@ -275,7 +302,89 @@ export class Compiler {
         code: string,
         includeDir: string,
         name: string
-    ): CompiledProg {
+    ): Assembled {
+        return this.assembler === 'maz'
+            ? this.assembleWithMaz(code, includeDir, name)
+            : this.assembleWithZ80asm(code, includeDir, name);
+    }
+
+    private assembleWithMaz(
+        code: string,
+        includeDir: string,
+        name: string
+    ): Assembled {
+        const fileResolver = new MazFileResolver(
+            name,
+            code,
+            path.resolve(includeDir)
+        );
+        const programme = new QuietProgramme({ fileResolver });
+        try {
+            // The same steps as maz's compile(), which can't be used as it
+            // logs errors to the console
+            programme.parse(name);
+            programme.processIncludes();
+            programme.checkConditionals();
+            programme.getMacros();
+            programme.expandMacros();
+            programme.selectRoutines();
+            programme.getSymbols();
+            programme.assemble();
+        } catch (e) {
+            throw new Error(
+                `maz failed: ${e instanceof Error ? e.message : String(e)}`
+            );
+        }
+        if (programme.errors.length > 0) {
+            throw new Error(
+                `maz failed:\n${programme.errors
+                    .map((error) =>
+                        error.location
+                            ? `${error.filename ?? name}:${error.location.line}: ${error.error}`
+                            : error.error
+                    )
+                    .join('\n')}`
+            );
+        }
+        const segments = programme.getSegments().map(({ address, bytes }) => ({
+            address,
+            data: Buffer.from(bytes),
+        }));
+        const symbols: { [symbol: string]: number } = {};
+        for (const [symbol, value] of Object.entries(programme.symbols)) {
+            if (typeof value === 'number') {
+                symbols[symbol] = value;
+            }
+        }
+        const lines = programme
+            .getLines()
+            .map(({ file, line, address, length, source, data }) => ({
+                file,
+                line,
+                address,
+                length,
+                source,
+                data,
+            }));
+        const [data, origin] = combineSegments(segments);
+        return {
+            prog: new CompiledProg(
+                data,
+                origin,
+                segments,
+                symbols,
+                programme.getList(false),
+                lines
+            ),
+            dependencies: [...fileResolver.dependencies],
+        };
+    }
+
+    private assembleWithZ80asm(
+        code: string,
+        includeDir: string,
+        name: string
+    ): Assembled {
         fs.mkdirSync(this.tmpDir, { recursive: true });
         const dir = fs.mkdtempSync(path.join(this.tmpDir, 'asm-'));
         try {
@@ -341,14 +450,17 @@ export class Compiler {
             const segments = readSegments(dir, base, map.heads);
             const lines = parseListing(list, map.heads);
             const [data, origin] = combineSegments(segments);
-            return new CompiledProg(
-                data,
-                origin,
-                segments,
-                map.symbols,
-                list,
-                lines
-            );
+            return {
+                prog: new CompiledProg(
+                    data,
+                    origin,
+                    segments,
+                    map.symbols,
+                    list,
+                    lines
+                ),
+                dependencies: findDependencies(list, includeDir, name),
+            };
         } finally {
             fs.rmSync(dir, { recursive: true, force: true });
         }
@@ -362,6 +474,92 @@ export class Compiler {
             filename
         );
     }
+}
+
+/**
+ * A maz Programme which doesn't log errors to the console
+ */
+class QuietProgramme extends Programme {
+    public logError(error: Programme['errors'][number]) {
+        this.errors.push(error);
+    }
+}
+
+/**
+ * Gives maz the code as the top level file, and reads included files from
+ * disk, relative to the file which includes them, or to includeDir. It
+ * records which files are read, so the cache knows the code depends on them.
+ */
+class MazFileResolver implements FileResolver {
+    public readonly dependencies = new Set<string>();
+    /** The files being read, innermost last */
+    private files: { name: string; dir: string }[] = [];
+
+    public constructor(
+        private name: string,
+        private code: string,
+        private includeDir: string
+    ) {}
+
+    public get filename(): string | undefined {
+        return this.files[this.files.length - 1]?.name;
+    }
+
+    public getRealFilename(filename: string): string {
+        const dir = this.files[this.files.length - 1]?.dir ?? this.includeDir;
+        const candidates = [
+            path.resolve(dir, filename),
+            path.resolve(this.includeDir, filename),
+        ];
+        return candidates.find(isFile) ?? candidates[0];
+    }
+
+    public fileExists(filename: string): boolean {
+        return isFile(this.getRealFilename(filename));
+    }
+
+    public readFile(filename: string): string[] {
+        if (this.files.length === 0) {
+            this.files.push({ name: this.name, dir: this.includeDir });
+            return this.code.split('\n');
+        }
+        const file = this.getRealFilename(filename);
+        this.files.push({ name: file, dir: path.dirname(file) });
+        this.dependencies.add(file);
+        return fs.readFileSync(file).toString().split('\n');
+    }
+
+    public readBinaryFile(filename: string): number[] {
+        const file = this.getRealFilename(filename);
+        this.dependencies.add(file);
+        return Array.from(fs.readFileSync(file));
+    }
+
+    public finishFile() {
+        this.files.pop();
+    }
+}
+
+function isFile(file: string) {
+    try {
+        return fs.statSync(file).isFile();
+    } catch {
+        return false;
+    }
+}
+
+let cachedMazVersion: string | undefined;
+
+/**
+ * The version of maz, so the cache isn't used after maz is upgraded
+ */
+function mazVersion(): string {
+    cachedMazVersion ??= (
+        JSON.parse(
+            fs.readFileSync(require.resolve('maz/package.json')).toString()
+        ) as { version: string }
+    ).version;
+    return cachedMazVersion;
 }
 
 interface MapInfo {

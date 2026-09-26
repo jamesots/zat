@@ -5,8 +5,9 @@ import { Flags } from './flags';
 export { Flags } from './flags';
 import { InstructionType, classifyInstruction } from './instruction_type';
 export { InstructionType } from './instruction_type';
-import { Compiler, CompiledProg } from './compiler';
+import { Compiler, CompiledProg, CompilerOptions } from './compiler';
 export {
+    Assembler,
     Compiler,
     CompiledProg,
     CompilerOptions,
@@ -97,8 +98,8 @@ export class Zat {
     public onMemWrite?: (addr: number, value: number) => boolean;
 
     /**
-     * The symbol table, which is created by z80asm. Symbols are
-     * case-sensitive, as they are in z80asm.
+     * The symbol table, which is created by the assembler. Symbols are
+     * case-sensitive.
      */
     public symbols: { [addr: string]: number } = {};
 
@@ -107,7 +108,17 @@ export class Zat {
      */
     public defaultCallSp?: number | string;
 
-    constructor() {
+    /**
+     * The compiler used by compile() and compileFile()
+     */
+    public readonly compiler: Compiler;
+
+    /**
+     * compilerOptions are used when assembling code with compile() and
+     * compileFile(), e.g. { assembler: 'z80asm' }.
+     */
+    constructor(compilerOptions: CompilerOptions = {}) {
+        this.compiler = new Compiler(compilerOptions);
         this.hal = {
             tStateCount: 0,
             readMemory: (addr) => {
@@ -164,7 +175,7 @@ export class Zat {
     }
 
     /**
-     * Compile some Z80 code, using z80asm.
+     * Compile some Z80 code, using maz or z80asm.
      *
      * The code is loaded at its origin (set with an 'org' directive, or 0 if
      * there isn't one), unless loadAt is given, in which case the first byte
@@ -178,7 +189,7 @@ export class Zat {
      * code at more than one address, put each part in its own section.
      */
     public compile(code: string, loadAt?: number | string) {
-        let compiled = new Compiler().compile(code);
+        let compiled = this.compiler.compile(code);
         this.loadProg(compiled, loadAt);
         return compiled;
     }
@@ -212,11 +223,11 @@ export class Zat {
     }
 
     /**
-     * Compile some Z80 code from a file, using z80asm, and load it at its
+     * Compile some Z80 code from a file, using maz or z80asm, and load it at its
      * origin, or at loadAt if it's given.
      */
     public compileFile(filename: string, loadAt?: number | string) {
-        let compiled = new Compiler().compileFile(filename);
+        let compiled = this.compiler.compileFile(filename);
         this.loadProg(compiled, loadAt);
         return compiled;
     }
