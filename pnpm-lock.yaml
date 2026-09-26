@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       maz:
-        specifier: ^0.6.0
-        version: 0.6.0
+        specifier: ^0.6.1
+        version: 0.6.1
     devDependencies:
       '@types/node':
         specifier: ^26.6.2
@@ -476,8 +476,8 @@ packages:
   magic-string@1.4.2:
     resolution: {integrity: sha512-vG+rjFRj1PqdIBozIxAGMjPlOhaVe+GXpbttY/iSK7rGcJRMlwNJO7dcUwmUqkymsFLJiNGI06t4D7Fr7yRC9g==}
 
-  maz@0.6.0:
-    resolution: {integrity: sha512-YdVMc0Avqv1xkyyMHmCHjsNTWgzUjJCzEcYSBVYOg/WjLA5nGV4bev71Y8kM9F0gtWyHeLK/fjhuct4lcWsmCQ==}
+  maz@0.6.1:
+    resolution: {integrity: sha512-takKRr5VxbfLODDrH44A67nveNqsefymAvJl9SNhk2CwH0r72SiBM5bNQiLoUPCMzVUYD/QXrjdKkBb1QZnn2g==}
     engines: {node: '>=22.12'}
     hasBin: true
 
@@ -950,7 +950,7 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  maz@0.6.0:
+  maz@0.6.1:
     dependencies:
       chalk: 6.0.0
       command-line-args: 6.0.2

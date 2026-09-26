@@ -2,7 +2,7 @@ import { execFileSync } from 'child_process';
 import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { FileResolver, Programme } from 'maz';
+import { compile as mazCompile, FileResolver, Programme } from 'maz';
 
 /**
  * A contiguous block of assembled bytes, e.g. one section.
@@ -318,18 +318,9 @@ export class Compiler {
             code,
             path.resolve(includeDir)
         );
-        const programme = new QuietProgramme({ fileResolver });
+        let programme: Programme;
         try {
-            // The same steps as maz's compile(), which can't be used as it
-            // logs errors to the console
-            programme.parse(name);
-            programme.processIncludes();
-            programme.checkConditionals();
-            programme.getMacros();
-            programme.expandMacros();
-            programme.selectRoutines();
-            programme.getSymbols();
-            programme.assemble();
+            programme = mazCompile(name, { fileResolver, quiet: true });
         } catch (e) {
             throw new Error(
                 `maz failed: ${e instanceof Error ? e.message : String(e)}`
@@ -473,15 +464,6 @@ export class Compiler {
             path.dirname(filename),
             filename
         );
-    }
-}
-
-/**
- * A maz Programme which doesn't log errors to the console
- */
-class QuietProgramme extends Programme {
-    public logError(error: Programme['errors'][number]) {
-        this.errors.push(error);
     }
 }
 

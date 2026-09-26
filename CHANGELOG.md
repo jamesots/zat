@@ -4,7 +4,7 @@
 
 Breaking changes:
 
-- maz is upgraded to 0.6.0, and zat needs Node.js 22.12 or later, as maz
+- maz is upgraded to 0.6.1, and zat needs Node.js 22.12 or later, as maz
   does. See maz's changelog for what's changed in it.
 - The Z80.js emulator is replaced with z80-emulator, which passes the FUSE
   tests. Z80.js gave wrong results for some documented instructions, such as

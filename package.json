@@ -30,7 +30,7 @@
     "z80-test": "2.0.1"
   },
   "dependencies": {
-    "maz": "^0.6.0"
+    "maz": "^0.6.1"
   },
   "engines": {
     "node": ">=22.12"
